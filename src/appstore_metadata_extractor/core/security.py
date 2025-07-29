@@ -203,7 +203,8 @@ def validate_password_complexity(password: str) -> bool:
     Returns:
         True if password meets requirements, False otherwise
     """
-    if len(password) < settings.password_min_length:
+    _settings = get_settings()
+    if len(password) < _settings.password_min_length:
         return False
 
     has_upper = any(c.isupper() for c in password)
@@ -224,8 +225,9 @@ def get_password_strength_message(password: str) -> str:
     """
     messages = []
 
-    if len(password) < settings.password_min_length:
-        messages.append(f"at least {settings.password_min_length} characters")
+    _settings = get_settings()
+    if len(password) < _settings.password_min_length:
+        messages.append(f"at least {_settings.password_min_length} characters")
 
     if not any(c.isupper() for c in password):
         messages.append("at least 1 uppercase letter")
