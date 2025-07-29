@@ -173,9 +173,7 @@ class AppMetadata(BaseModel):
         default_factory=lambda: datetime.now(UTC), description="Extraction timestamp"
     )
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 
 class ExtendedAppMetadata(AppMetadata):
@@ -308,9 +306,7 @@ class FieldChange(BaseModel):
     change_type: str  # 'added', 'removed', 'modified'
     detected_at: datetime = Field(default_factory=datetime.utcnow)
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 
 class AppChangeLog(BaseModel):
@@ -324,6 +320,4 @@ class AppChangeLog(BaseModel):
     metadata_before: Optional[AppMetadata] = None
     metadata_after: Optional[AppMetadata] = None
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})

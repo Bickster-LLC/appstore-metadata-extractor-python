@@ -60,16 +60,19 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get settings instance (cached in production, fresh in testing)."""
     import os
+
     if os.getenv("TESTING", "0") == "1":
         # Always return fresh settings in testing mode
         return Settings()
     # Use cached version in production
     return _get_cached_settings()
 
+
 @lru_cache()
 def _get_cached_settings() -> Settings:
     """Internal cached settings getter."""
     return Settings()
+
 
 # Global settings instance
 settings = get_settings()

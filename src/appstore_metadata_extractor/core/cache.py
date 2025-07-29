@@ -99,7 +99,7 @@ class CacheManager:
             ttl: Time-to-live in seconds (uses default_ttl if not specified)
         """
         cache_ttl = ttl or self.default_ttl
-        
+
         def decorator(func: Callable) -> Callable:
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:

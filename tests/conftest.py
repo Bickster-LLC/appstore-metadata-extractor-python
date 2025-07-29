@@ -56,7 +56,7 @@ async def test_db(test_client: TestClient) -> AsyncGenerator[AsyncSession, None]
     """Create a test database session using the same database as test_client."""
     # Get the engine from test_client
     engine = test_client._test_engine
-    
+
     # Create session factory
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -109,7 +109,7 @@ def auth_headers(test_user: User, test_settings: Settings) -> dict[str, str]:
     """Create authentication headers for test user."""
     # Import here to avoid circular imports and ensure fresh import
     from appstore_metadata_extractor.core.security import create_access_token
-    
+
     token = create_access_token({"sub": str(test_user.id)}, _settings=test_settings)
     return {"Authorization": f"Bearer {token}"}
 
@@ -120,13 +120,17 @@ def test_client(test_settings: Settings) -> Generator[TestClient, None, None]:
     # Import here to avoid circular imports
     import os
     import tempfile
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_sessionmaker,
+        create_async_engine,
+    )
     from sqlalchemy.pool import StaticPool
-    
+
     # Create a shared database for the entire test
     fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
-    
+
     # Create engine with StaticPool to ensure connection reuse
     engine = create_async_engine(
         f"sqlite+aiosqlite:///{db_path}",
@@ -134,16 +138,16 @@ def test_client(test_settings: Settings) -> Generator[TestClient, None, None]:
         connect_args={"check_same_thread": False},
         echo=False,
     )
-    
+
     # Create session factory
     async_session_factory = async_sessionmaker(
-        engine, 
+        engine,
         class_=AsyncSession,
         expire_on_commit=False,
         autoflush=False,
         autocommit=False,
     )
-    
+
     # Override the get_db dependency to use our test session factory
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         async with async_session_factory() as session:
@@ -155,10 +159,11 @@ def test_client(test_settings: Settings) -> Generator[TestClient, None, None]:
 
     # Create tables synchronously
     import asyncio
+
     async def create_tables():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-    
+
     asyncio.run(create_tables())
 
     try:
@@ -173,10 +178,10 @@ def test_client(test_settings: Settings) -> Generator[TestClient, None, None]:
     finally:
         # Clean up
         app.dependency_overrides.clear()
-        
+
         # Dispose engine
         asyncio.run(engine.dispose())
-        
+
         # Remove database file
         if os.path.exists(db_path):
             os.unlink(db_path)
@@ -194,12 +199,13 @@ def override_settings(test_settings: Settings, monkeypatch: pytest.MonkeyPatch) 
     """Override settings for all tests."""
     # Set TESTING environment variable
     monkeypatch.setenv("TESTING", "1")
-    
+
     # Clear the settings cache to force fresh settings
     from appstore_metadata_extractor.settings import _get_cached_settings
-    if hasattr(_get_cached_settings, 'cache_clear'):
+
+    if hasattr(_get_cached_settings, "cache_clear"):
         _get_cached_settings.cache_clear()
-    
+
     # Override settings getter
     monkeypatch.setattr(
         "appstore_metadata_extractor.settings.get_settings", lambda: test_settings

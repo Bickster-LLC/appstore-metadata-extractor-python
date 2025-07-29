@@ -30,9 +30,7 @@ class AppMetadata(BaseModel):
         default_factory=lambda: datetime.now(UTC), description="Scrape timestamp"
     )
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
 
 
 class AppInput(BaseModel):
