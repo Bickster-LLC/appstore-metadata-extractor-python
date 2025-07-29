@@ -11,11 +11,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from appstore_metadata_extractor.core import (
-    CombinedExtractor,
-    WBSConfig,
-    WBSValidator,
-)
+from appstore_metadata_extractor.core import CombinedExtractor, WBSConfig, WBSValidator
 from appstore_metadata_extractor.core.models import WBSBoundaries
 
 console = Console()

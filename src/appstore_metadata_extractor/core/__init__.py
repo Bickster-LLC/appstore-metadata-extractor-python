@@ -4,11 +4,7 @@ This module contains shared business logic used by both CLI and web interfaces.
 """
 
 from .cache import CacheManager, RateLimiter
-from .exceptions import (
-    ExtractionError,
-    RateLimitError,
-    ValidationError,
-)
+from .exceptions import ExtractionError, RateLimitError, ValidationError
 from .extractors import (
     BaseExtractor,
     CombinedExtractor,

@@ -9,14 +9,14 @@ from appstore_metadata_extractor import AppStoreScraper
 def main():
     # Initialize the scraper
     scraper = AppStoreScraper()
-    
+
     # Example App Store URL
     url = "https://apps.apple.com/us/app/github/id1477376905"
-    
+
     # Extract metadata
     print("Extracting metadata...")
     metadata = scraper.extract(url)
-    
+
     # Display results
     print(f"\nApp: {metadata.title}")
     print(f"Developer: {metadata.developer}")
@@ -25,10 +25,10 @@ def main():
     print(f"Price: {metadata.price}")
     print(f"Category: {metadata.category}")
     print(f"Last Updated: {metadata.release_date}")
-    
+
     # Access description
     if metadata.description:
-        print(f"\nDescription (first 200 chars):")
+        print("\nDescription (first 200 chars):")
         print(metadata.description[:200] + "...")
 
 

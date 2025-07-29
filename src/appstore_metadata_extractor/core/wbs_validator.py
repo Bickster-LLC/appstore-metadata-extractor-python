@@ -2,12 +2,7 @@
 
 from typing import List, Optional, Set
 
-from .models import (
-    AppMetadata,
-    BatchExtractionResult,
-    ExtractionResult,
-    WBSConfig,
-)
+from .models import AppMetadata, BatchExtractionResult, ExtractionResult, WBSConfig
 
 
 class WBSValidator:

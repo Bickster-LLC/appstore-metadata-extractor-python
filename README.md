@@ -74,14 +74,14 @@ from appstore_metadata_extractor import CombinedExtractor
 
 async def main():
     extractor = CombinedExtractor()
-    
+
     # Extract single app
     result = await extractor.extract("https://apps.apple.com/us/app/example/id123456789")
-    
+
     # Extract multiple apps concurrently
     urls = ["url1", "url2", "url3"]
     results = await extractor.extract_batch(urls)
-    
+
 asyncio.run(main())
 ```
 
@@ -134,7 +134,7 @@ For batch operations, use a JSON file:
       "url": "https://apps.apple.com/us/app/example-1/id123456789"
     },
     {
-      "name": "Example App 2", 
+      "name": "Example App 2",
       "url": "https://apps.apple.com/us/app/example-2/id987654321"
     }
   ]

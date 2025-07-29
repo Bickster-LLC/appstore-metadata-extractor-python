@@ -13,11 +13,7 @@ from pydantic import HttpUrl
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .cache import get_cache_manager, get_rate_limiter
-from .exceptions import (
-    ExtractionError,
-    NetworkError,
-    ValidationError,
-)
+from .exceptions import ExtractionError, NetworkError, ValidationError
 from .models import (
     AppMetadata,
     DataSource,

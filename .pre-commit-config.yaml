@@ -25,4 +25,18 @@ repos:
     rev: 7.0.0
     hooks:
       - id: flake8
-        args: ["--max-line-length=88", "--extend-ignore=E203"]
+        args: ["--config=.flake8"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: ["--config-file=pyproject.toml"]
+        additional_dependencies: [
+          types-requests,
+          pydantic,
+          aiohttp,
+          types-beautifulsoup4,
+          tenacity
+        ]
+        files: ^src/

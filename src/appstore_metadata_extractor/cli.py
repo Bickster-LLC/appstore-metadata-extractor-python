@@ -7,11 +7,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from .core import (
-    CombinedExtractor,
-    ExtractionMode,
-    WBSConfig,
-)
+from .core import CombinedExtractor, ExtractionMode, WBSConfig
 
 console = Console()
 
