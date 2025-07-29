@@ -2,9 +2,12 @@ import asyncio
 import json
 from datetime import UTC, datetime
 
+import pytest
+
 from appstore_metadata_extractor.combined_scraper import CombinedAppStoreScraper
 
 
+@pytest.mark.asyncio
 async def test_combined_scraper():
     scraper = CombinedAppStoreScraper()
 

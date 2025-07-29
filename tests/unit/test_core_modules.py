@@ -3,9 +3,12 @@
 
 import asyncio
 
+import pytest
+
 from appstore_metadata_extractor import CombinedExtractor, WBSConfig, WBSValidator
 
 
+@pytest.mark.asyncio
 async def test_core_extraction():
     """Test the refactored core extraction functionality."""
 

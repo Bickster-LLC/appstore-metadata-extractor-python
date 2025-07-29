@@ -6,6 +6,8 @@ import asyncio
 import json
 from datetime import UTC, datetime
 
+import pytest
+
 from appstore_metadata_extractor.wbs_extractor import (
     ExtractionMode,
     WBSConfig,
@@ -13,6 +15,7 @@ from appstore_metadata_extractor.wbs_extractor import (
 )
 
 
+@pytest.mark.asyncio
 async def test_wbs_extractor():
     print("WBS Framework App Store Metadata Extractor")
     print("=" * 60)
