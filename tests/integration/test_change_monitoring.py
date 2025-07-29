@@ -5,11 +5,14 @@ Demonstrate WBS-based monitoring and performance features
 import asyncio
 from datetime import datetime
 
+import pytest
+
 from appstore_metadata_extractor.change_monitor import WBSChangeMonitor
 from appstore_metadata_extractor.wbs_extractor import WBSConfig
 
 
-async def demonstrate_monitoring():
+@pytest.mark.skip(reason="This is a demonstration script, not a test")
+async def test_demonstrate_monitoring():
     print("=== WBS Monitoring & Performance Demo ===\n")
 
     # Configure WBS with strict boundaries
@@ -152,4 +155,4 @@ async def demonstrate_monitoring():
 
 
 if __name__ == "__main__":
-    asyncio.run(demonstrate_monitoring())
+    asyncio.run(test_demonstrate_monitoring())
