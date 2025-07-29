@@ -1,6 +1,6 @@
 # Publishing to PyPI
 
-This guide covers how to publish the `appstore-metadata-extractor` package to PyPI.
+This guide covers how to publish the `apple-appstore-metadata-extractor` package to PyPI.
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ This guide covers how to publish the `appstore-metadata-extractor` package to Py
 Instead of using tokens, you can use PyPI's trusted publishing:
 
 1. Go to https://pypi.org/manage/projects/
-2. Create the project name `appstore-metadata-extractor`
+2. Create the project name `apple-appstore-metadata-extractor`
 3. Go to Publishing settings
 4. Add GitHub as a trusted publisher:
    - Owner: yourusername
@@ -57,7 +57,7 @@ python -m build
 twine upload --repository testpypi dist/*
 
 # Test installation
-pip install --index-url https://test.pypi.org/simple/ appstore-metadata-extractor
+pip install --index-url https://test.pypi.org/simple/ apple-appstore-metadata-extractor
 ```
 
 ### 3. Upload to PyPI
@@ -98,8 +98,8 @@ Follow semantic versioning:
 
 ## Post-Publishing Checklist
 
-- [ ] Verify package on PyPI: https://pypi.org/project/appstore-metadata-extractor/
-- [ ] Test installation: `pip install appstore-metadata-extractor`
+- [ ] Verify package on PyPI: https://pypi.org/project/apple-appstore-metadata-extractor/
+- [ ] Test installation: `pip install apple-appstore-metadata-extractor`
 - [ ] Update documentation links
 - [ ] Announce release (if applicable)
 

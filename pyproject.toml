@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "appstore-metadata-extractor"
+name = "apple-appstore-metadata-extractor"
 version = "0.1.0"
 description = "Extract and monitor metadata from Apple App Store applications"
 readme = "README.md"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Bickster LLC", email = "support@bickster.com"}
 ]
 license = {text = "MIT"}
 classifiers = [
@@ -49,11 +49,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/appstore-metadata-extractor-python"
-Documentation = "https://github.com/yourusername/appstore-metadata-extractor-python#readme"
-Repository = "https://github.com/yourusername/appstore-metadata-extractor-python"
-Issues = "https://github.com/yourusername/appstore-metadata-extractor-python/issues"
-Changelog = "https://github.com/yourusername/appstore-metadata-extractor-python/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Bickster-LLC/appstore-metadata-extractor-python"
+Documentation = "https://github.com/Bickster-LLC/appstore-metadata-extractor-python#readme"
+Repository = "https://github.com/Bickster-LLC/appstore-metadata-extractor-python"
+Issues = "https://github.com/Bickster-LLC/appstore-metadata-extractor-python/issues"
+Changelog = "https://github.com/Bickster-LLC/appstore-metadata-extractor-python/blob/main/CHANGELOG.md"
 
 [project.scripts]
 appstore-extractor = "appstore_metadata_extractor.cli:cli"

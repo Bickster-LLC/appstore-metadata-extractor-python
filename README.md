@@ -1,7 +1,7 @@
-# App Store Metadata Extractor
+# Apple App Store Metadata Extractor
 
-[![PyPI version](https://badge.fury.io/py/appstore-metadata-extractor.svg)](https://badge.fury.io/py/appstore-metadata-extractor)
-[![Python Support](https://img.shields.io/pypi/pyversions/appstore-metadata-extractor.svg)](https://pypi.org/project/appstore-metadata-extractor/)
+[![PyPI version](https://badge.fury.io/py/apple-appstore-metadata-extractor.svg)](https://badge.fury.io/py/apple-appstore-metadata-extractor)
+[![Python Support](https://img.shields.io/pypi/pyversions/apple-appstore-metadata-extractor.svg)](https://pypi.org/project/apple-appstore-metadata-extractor/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Extract and monitor metadata from Apple App Store applications with ease.
@@ -19,7 +19,7 @@ Extract and monitor metadata from Apple App Store applications with ease.
 ## Installation
 
 ```bash
-pip install appstore-metadata-extractor
+pip install apple-appstore-metadata-extractor
 ```
 
 ## Quick Start
@@ -251,4 +251,4 @@ This tool is for educational and research purposes only. Make sure to comply wit
 
 ## Related Projects
 
-For a full-featured solution with web API, authentication, and UI, check out the [parent project](https://github.com/yourusername/appstore-metadata-extractor).
+For a full-featured solution with web API, authentication, and UI, check out the [parent project](https://github.com/Bickster-LLC/appstore-metadata-extractor).
