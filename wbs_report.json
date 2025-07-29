@@ -1,0 +1,108 @@
+{
+  "timestamp": "2025-07-29T18:54:06.857519+00:00",
+  "config": {
+    "purpose": "Track competing messaging apps metadata",
+    "boundaries": {
+      "required_fields": [
+        "app_id",
+        "developer_name",
+        "current_version",
+        "name",
+        "price",
+        "rating_count"
+      ],
+      "optional_fields": [
+        "release_notes",
+        "subtitle",
+        "in_app_purchases"
+      ],
+      "rate_limits": {
+        "itunes_api": 20,
+        "web_scrape_delay": 1.0
+      }
+    },
+    "success_criteria": {
+      "min_required_fields_ratio": 1.0,
+      "min_optional_fields_ratio": 0.5,
+      "min_extraction_success_rate": 0.9
+    }
+  },
+  "results": {
+    "https://apps.apple.com/us/app/whatsapp-messenger/id310633997": {
+      "success": true,
+      "meets_boundaries": true,
+      "meets_success_criteria": true,
+      "required_fields_present": [
+        "app_id",
+        "developer_name",
+        "current_version",
+        "name",
+        "price",
+        "rating_count"
+      ],
+      "optional_fields_present": [
+        "release_notes",
+        "subtitle",
+        "in_app_purchases"
+      ],
+      "extraction_time": 0.551201,
+      "errors": [],
+      "warnings": [
+        "Served from cache"
+      ]
+    },
+    "https://apps.apple.com/us/app/telegram-messenger/id686449807": {
+      "success": true,
+      "meets_boundaries": true,
+      "meets_success_criteria": true,
+      "required_fields_present": [
+        "app_id",
+        "developer_name",
+        "current_version",
+        "name",
+        "price",
+        "rating_count"
+      ],
+      "optional_fields_present": [
+        "release_notes",
+        "subtitle",
+        "in_app_purchases"
+      ],
+      "extraction_time": 1.26395,
+      "errors": [],
+      "warnings": []
+    },
+    "https://apps.apple.com/us/app/signal-private-messenger/id874139669": {
+      "success": true,
+      "meets_boundaries": true,
+      "meets_success_criteria": true,
+      "required_fields_present": [
+        "app_id",
+        "developer_name",
+        "current_version",
+        "name",
+        "price",
+        "rating_count"
+      ],
+      "optional_fields_present": [
+        "release_notes",
+        "subtitle",
+        "in_app_purchases"
+      ],
+      "extraction_time": 1.151375,
+      "errors": [],
+      "warnings": []
+    }
+  },
+  "compliance": {
+    "wbs_compliant": true,
+    "total_apps": 3,
+    "successful_extractions": 3,
+    "success_rate": 1.0,
+    "meets_boundaries": 3,
+    "meets_success_criteria": 3,
+    "boundary_compliance_rate": 1.0,
+    "criteria_compliance_rate": 1.0,
+    "violations": []
+  }
+}
