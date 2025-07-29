@@ -196,7 +196,7 @@ class AppMetadataCombined(BaseModel):
     )
     raw_web_data: Optional[Dict[str, Any]] = Field(None, description="Raw scraped data")
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    model_config = ConfigDict()
 
 
 class CombinedScrapeResult(BaseModel):

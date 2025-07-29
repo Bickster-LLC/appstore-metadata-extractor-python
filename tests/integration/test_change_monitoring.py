@@ -5,8 +5,8 @@ Demonstrate WBS-based monitoring and performance features
 import asyncio
 from datetime import datetime
 
-from src.appstore_metadata_extractor.change_monitor import WBSChangeMonitor
-from src.appstore_metadata_extractor.wbs_extractor import WBSConfig
+from appstore_metadata_extractor.change_monitor import WBSChangeMonitor
+from appstore_metadata_extractor.wbs_extractor import WBSConfig
 
 
 async def demonstrate_monitoring():

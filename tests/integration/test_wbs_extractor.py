@@ -6,7 +6,7 @@ import asyncio
 import json
 from datetime import UTC, datetime
 
-from src.appstore_metadata_extractor.wbs_extractor import (
+from appstore_metadata_extractor.wbs_extractor import (
     ExtractionMode,
     WBSConfig,
     WBSMetadataExtractor,

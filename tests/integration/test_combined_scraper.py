@@ -2,7 +2,7 @@ import asyncio
 import json
 from datetime import UTC, datetime
 
-from src.appstore_metadata_extractor.combined_scraper import CombinedAppStoreScraper
+from appstore_metadata_extractor.combined_scraper import CombinedAppStoreScraper
 
 
 async def test_combined_scraper():
