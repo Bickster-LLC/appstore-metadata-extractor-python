@@ -27,13 +27,13 @@ def override_settings(test_settings: Settings, monkeypatch: pytest.MonkeyPatch) 
     """Override settings for all tests."""
     # Set TESTING environment variable
     monkeypatch.setenv("TESTING", "1")
-    
+
     # Clear the settings cache to force fresh settings
     from appstore_metadata_extractor.settings import _get_cached_settings
-    
+
     if hasattr(_get_cached_settings, "cache_clear"):
         _get_cached_settings.cache_clear()
-    
+
     # Override settings getter
     monkeypatch.setattr(
         "appstore_metadata_extractor.settings.get_settings", lambda: test_settings

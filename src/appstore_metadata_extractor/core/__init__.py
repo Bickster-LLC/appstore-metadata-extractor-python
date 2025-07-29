@@ -24,6 +24,7 @@ from .models import (
     WBSConfig,
     WBSSuccess,
 )
+
 # Security module removed - only needed for web API, not standalone package
 from .wbs_validator import WBSValidator
 
