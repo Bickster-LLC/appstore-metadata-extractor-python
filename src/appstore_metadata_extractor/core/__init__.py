@@ -24,18 +24,7 @@ from .models import (
     WBSConfig,
     WBSSuccess,
 )
-from .security import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-    generate_password_reset_token,
-    generate_verification_token,
-    get_password_hash,
-    get_password_strength_message,
-    hash_token,
-    validate_password_complexity,
-    verify_password,
-)
+# Security module removed - only needed for web API, not standalone package
 from .wbs_validator import WBSValidator
 
 __all__ = [
@@ -61,15 +50,4 @@ __all__ = [
     "ExtractionError",
     "RateLimitError",
     "ValidationError",
-    # Security
-    "verify_password",
-    "get_password_hash",
-    "create_access_token",
-    "create_refresh_token",
-    "decode_token",
-    "hash_token",
-    "generate_verification_token",
-    "generate_password_reset_token",
-    "validate_password_complexity",
-    "get_password_strength_message",
 ]

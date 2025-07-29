@@ -3,10 +3,10 @@
 from functools import lru_cache
 from typing import Optional
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel
 
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
     """Application settings with WBS boundaries."""
 
     # Application
@@ -52,9 +52,8 @@ class Settings(BaseSettings):
     password_min_length: int = 8
     bcrypt_rounds: int = 12
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
-    )
+    # Note: For env file support in standalone package, users can override
+    # settings by creating a Settings instance with custom values
 
 
 def get_settings() -> Settings:

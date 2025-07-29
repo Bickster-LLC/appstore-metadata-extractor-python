@@ -95,9 +95,23 @@ warn_unreachable = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
+# BeautifulSoup and web scraping modules have dynamic APIs
+# that cause many false positive type errors
 module = [
     "appstore_metadata_extractor.scraper",
     "appstore_metadata_extractor.combined_scraper"
+]
+ignore_errors = true  # Too many BeautifulSoup false positives
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+# CLI has complex Click decorators and dynamic attributes
+module = [
+    "appstore_metadata_extractor.cli",
+    "appstore_metadata_extractor.cli.*"
 ]
 ignore_errors = true
 warn_unused_ignores = true
