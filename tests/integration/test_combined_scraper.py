@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from src.appstore_metadata_extractor.combined_scraper import CombinedAppStoreScraper
 

@@ -120,6 +120,7 @@ def test_client(test_settings: Settings) -> Generator[TestClient, None, None]:
     # Import here to avoid circular imports
     import os
     import tempfile
+
     from sqlalchemy.ext.asyncio import (
         AsyncSession,
         async_sessionmaker,

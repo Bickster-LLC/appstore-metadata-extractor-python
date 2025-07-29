@@ -1,10 +1,10 @@
 """Core data models for AppStore Metadata Extractor."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 # Enums

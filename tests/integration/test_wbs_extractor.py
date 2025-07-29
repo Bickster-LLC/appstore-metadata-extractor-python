@@ -4,7 +4,7 @@ Test script for WBS-based App Store Metadata Extractor
 
 import asyncio
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from src.appstore_metadata_extractor.wbs_extractor import (
     ExtractionMode,

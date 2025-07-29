@@ -1,7 +1,7 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class AppMetadata(BaseModel):

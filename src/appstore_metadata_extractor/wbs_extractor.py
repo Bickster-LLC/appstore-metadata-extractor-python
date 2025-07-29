@@ -3,7 +3,7 @@ App Store Metadata Extractor using WBS (What-Boundaries-Success) Framework
 """
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 

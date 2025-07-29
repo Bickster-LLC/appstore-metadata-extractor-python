@@ -4,7 +4,7 @@ import asyncio
 import json
 import re
 from abc import ABC, abstractmethod
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 import aiohttp
