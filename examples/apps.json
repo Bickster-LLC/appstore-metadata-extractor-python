@@ -1,0 +1,24 @@
+{
+  "apps": [
+    {
+      "name": "GitHub",
+      "url": "https://apps.apple.com/us/app/github/id1477376905"
+    },
+    {
+      "name": "Slack",
+      "url": "https://apps.apple.com/us/app/slack/id618783545"
+    },
+    {
+      "name": "Notion",
+      "url": "https://apps.apple.com/us/app/notion/id1232780281"
+    },
+    {
+      "name": "Spotify",
+      "url": "https://apps.apple.com/us/app/spotify/id324684580"
+    },
+    {
+      "name": "Discord",
+      "url": "https://apps.apple.com/us/app/discord/id985746746"
+    }
+  ]
+}
