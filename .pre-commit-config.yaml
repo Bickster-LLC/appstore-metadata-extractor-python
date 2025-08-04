@@ -31,7 +31,7 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        args: ["--config-file=pyproject.toml"]
+        args: ["--config-file=pyproject.toml", "src"]
         additional_dependencies: [
           types-requests,
           pydantic,
@@ -39,4 +39,4 @@ repos:
           types-beautifulsoup4,
           tenacity
         ]
-        files: ^src/
+        pass_filenames: false
