@@ -222,6 +222,7 @@ class ITunesAPIExtractor(BaseExtractor):
             formatted_price=data.get("formattedPrice", "Free"),
             currency=data.get("currency", "USD"),
             in_app_purchases=False,  # Not directly available
+            in_app_purchase_list=[],  # Not available from iTunes API
             current_version=data.get("version", ""),
             version_date=self._parse_date(data.get("currentVersionReleaseDate")),
             whats_new=data.get("releaseNotes"),
@@ -233,6 +234,9 @@ class ITunesAPIExtractor(BaseExtractor):
             rating_count=data.get("userRatingCount"),
             icon_url=HttpUrl(data.get("artworkUrl512", data.get("artworkUrl100", ""))),
             screenshots=data.get("screenshotUrls", []),
+            app_support_url=None,  # Not available from iTunes API
+            privacy_policy_url=None,  # Not available from iTunes API
+            developer_website_url=None,  # Not available from iTunes API
             data_source=DataSource.ITUNES_API,
             extracted_at=datetime.now(UTC),
         )
@@ -326,11 +330,15 @@ class WebScraperExtractor(BaseExtractor):
             "formatted_price": self._extract_formatted_price(soup),
             "currency": "USD",
             "in_app_purchases": self._has_in_app_purchases(soup),
+            "in_app_purchase_list": [],  # Will be populated below
             "current_version": self._extract_version(soup),
             "description": self._extract_description(soup, json_ld_data),
             "content_rating": self._extract_age_rating(soup, json_ld_data),
             "icon_url": self._extract_icon_url(soup, json_ld_data),
             "screenshots": self._extract_screenshots(soup),
+            "app_support_url": self._extract_app_support_url(soup),
+            "privacy_policy_url": self._extract_privacy_policy_url(soup),
+            "developer_website_url": self._extract_developer_website_url(soup),
             "data_source": DataSource.WEB_SCRAPE,
         }
 
@@ -354,6 +362,26 @@ class WebScraperExtractor(BaseExtractor):
         languages = self._extract_languages(soup)
         if languages:
             extracted_data["languages"] = languages
+
+        # Extract detailed IAP information if app has IAPs
+        if extracted_data["in_app_purchases"]:
+            iap_data = self._extract_in_app_purchases(soup)
+            if iap_data:
+                # Convert to InAppPurchase objects
+                from .models import InAppPurchase, InAppPurchaseType
+
+                iap_list = []
+                for iap in iap_data:
+                    iap_obj = InAppPurchase(
+                        name=iap["name"],
+                        price=iap["price"],
+                        price_value=iap.get("price_value"),
+                        currency=iap.get("currency"),
+                        type=InAppPurchaseType(iap.get("type", "unknown")),
+                        description=None,
+                    )
+                    iap_list.append(iap_obj)
+                extracted_data["in_app_purchase_list"] = iap_list
 
         metadata = ExtendedAppMetadata(**extracted_data)
 
@@ -418,8 +446,86 @@ class WebScraperExtractor(BaseExtractor):
 
     def _has_in_app_purchases(self, soup: BeautifulSoup) -> bool:
         """Check if app has in-app purchases."""
-        iap_elem = soup.find(text=re.compile(r"In-App Purchases"))
+        # Look for the Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            # Try alternative selector
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section and isinstance(info_section, Tag):
+            # Look for dt element with "In-App Purchases" text
+            iap_dt = info_section.find("dt", string=re.compile(r"In-App Purchases"))
+            if iap_dt:
+                return True
+
+        # Fallback: search entire page
+        iap_elem = soup.find(string=re.compile(r"In-App Purchases"))
         return bool(iap_elem)
+
+    def _extract_in_app_purchases(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
+        """Extract detailed in-app purchase information."""
+        iap_list = []
+
+        # Look for the Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section and isinstance(info_section, Tag):
+            # Find the dt element with "In-App Purchases"
+            iap_dt = info_section.find("dt", string=re.compile(r"In-App Purchases"))
+            if iap_dt and isinstance(iap_dt, Tag):
+                # Find the corresponding dd element
+                iap_dd = iap_dt.find_next_sibling("dd")
+                if iap_dd and isinstance(iap_dd, Tag):
+                    # Look for list items within the dd
+                    items = iap_dd.find_all("li")
+                    for item in items:
+                        text = item.get_text(strip=True)
+                        # The text might be concatenated like "Headspace$12.99"
+                        # Look for price pattern at the end
+                        price_match = re.search(r"(\$[\d.,]+)$", text)
+                        if price_match:
+                            price_str = price_match.group(1)
+                            name = text[: price_match.start()].strip()
+
+                            # Extract numeric price
+                            price_value = None
+                            try:
+                                price_value = float(re.sub(r"[^\d.]", "", price_str))
+                            except Exception:
+                                pass
+
+                            # Determine IAP type based on name
+                            iap_type = "unknown"
+                            name_lower = name.lower()
+                            if any(
+                                word in name_lower
+                                for word in [
+                                    "monthly",
+                                    "month",
+                                    "annual",
+                                    "year",
+                                    "weekly",
+                                    "week",
+                                    "subscription",
+                                ]
+                            ):
+                                iap_type = "auto_renewable_subscription"
+                            elif "lifetime" in name_lower:
+                                iap_type = "non_consumable"
+
+                            iap_list.append(
+                                {
+                                    "name": name,
+                                    "price": price_str,
+                                    "price_value": price_value,
+                                    "currency": "USD",
+                                    "type": iap_type,
+                                }
+                            )
+
+        return iap_list
 
     def _extract_version(self, soup: BeautifulSoup) -> str:
         """Extract current version."""
@@ -545,6 +651,66 @@ class WebScraperExtractor(BaseExtractor):
                 if hasattr(item, "text"):
                     languages.append(item.text.strip())
         return languages
+
+    def _extract_app_support_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
+        """Extract app support URL."""
+        # Look for the Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section and isinstance(info_section, Tag):
+            # Look for links in the section
+            links = info_section.find_all("a")
+            for link in links:
+                if link.get("href") and "App Support" in link.get_text():
+                    return HttpUrl(link["href"])
+
+        # Alternative: Look for footer links
+        footer_links = soup.find_all("a", {"class": re.compile("link.*footer")})
+        for link in footer_links:
+            if link.get("href") and "support" in link.get_text().lower():
+                return HttpUrl(link["href"])
+
+        return None
+
+    def _extract_privacy_policy_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
+        """Extract privacy policy URL."""
+        # Look for the Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section and isinstance(info_section, Tag):
+            # Look for links in the section
+            links = info_section.find_all("a")
+            for link in links:
+                if link.get("href") and "Privacy Policy" in link.get_text():
+                    return HttpUrl(link["href"])
+
+        # Alternative: Look for footer links
+        footer_links = soup.find_all("a", {"class": re.compile("link.*footer")})
+        for link in footer_links:
+            if link.get("href") and "privacy" in link.get_text().lower():
+                return HttpUrl(link["href"])
+
+        return None
+
+    def _extract_developer_website_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
+        """Extract developer website URL."""
+        # Look for the Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section and isinstance(info_section, Tag):
+            # Look for links in the section
+            links = info_section.find_all("a")
+            for link in links:
+                if link.get("href") and "Developer Website" in link.get_text():
+                    return HttpUrl(link["href"])
+
+        return None
 
 
 class CombinedExtractor(BaseExtractor):

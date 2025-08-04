@@ -16,12 +16,36 @@ class DataSource(str, Enum):
     COMBINED = "combined"
 
 
+class InAppPurchaseType(str, Enum):
+    """Type of in-app purchase."""
+
+    CONSUMABLE = "consumable"
+    NON_CONSUMABLE = "non_consumable"
+    AUTO_RENEWABLE_SUBSCRIPTION = "auto_renewable_subscription"
+    NON_RENEWING_SUBSCRIPTION = "non_renewing_subscription"
+    UNKNOWN = "unknown"
+
+
 class ExtractionMode(str, Enum):
     """Extraction strategy mode."""
 
     FAST = "fast"  # iTunes API only
     COMPLETE = "complete"  # iTunes + Web scraping
     SMART = "smart"  # Decide based on requirements
+
+
+# In-App Purchase Model
+class InAppPurchase(BaseModel):
+    """Individual in-app purchase item."""
+
+    name: str = Field(..., description="Name of the IAP item")
+    price: str = Field(..., description="Formatted price (e.g., '$9.99')")
+    price_value: Optional[float] = Field(None, description="Numeric price value")
+    currency: Optional[str] = Field(None, description="Currency code")
+    type: InAppPurchaseType = Field(
+        default=InAppPurchaseType.UNKNOWN, description="Type of IAP"
+    )
+    description: Optional[str] = Field(None, description="IAP description")
 
 
 # WBS Framework Models
@@ -143,6 +167,9 @@ class AppMetadata(BaseModel):
     formatted_price: str = Field(default="Free", description="Formatted price string")
     currency: str = Field(default="USD", description="Currency code")
     in_app_purchases: bool = Field(default=False, description="Has in-app purchases")
+    in_app_purchase_list: List[InAppPurchase] = Field(
+        default_factory=list, description="List of in-app purchases"
+    )
 
     # Version
     current_version: str = Field(..., description="Current version number")
@@ -165,6 +192,15 @@ class AppMetadata(BaseModel):
     icon_url: HttpUrl = Field(..., description="App icon URL")
     screenshots: List[HttpUrl] = Field(
         default_factory=list, description="Screenshot URLs"
+    )
+
+    # Support links
+    app_support_url: Optional[HttpUrl] = Field(None, description="App support URL")
+    privacy_policy_url: Optional[HttpUrl] = Field(
+        None, description="Privacy policy URL"
+    )
+    developer_website_url: Optional[HttpUrl] = Field(
+        None, description="Developer website URL"
     )
 
     # Metadata

@@ -101,10 +101,48 @@ class CombinedAppStoreScraper:
 
         # Check for in-app purchases
         info_section = soup.find("section", class_="section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
         if info_section:
             in_app_elem = info_section.find("dt", string=re.compile("In-App Purchases"))
             if in_app_elem:
                 web_data["in_app_purchases"] = True
+
+                # Extract detailed IAP information
+                iap_list = []
+                iap_dd = in_app_elem.find_next_sibling("dd")
+                if iap_dd:
+                    items = iap_dd.find_all("li")
+                    for item in items:
+                        text = item.get_text(strip=True)
+                        # The text might be concatenated like "Headspace$12.99"
+                        # Look for price pattern at the end
+                        price_match = re.search(r"(\$[\d.,]+)$", text)
+                        if price_match:
+                            price_str = price_match.group(1)
+                            name = text[: price_match.start()].strip()
+                            iap_list.append({"name": name, "price": price_str})
+
+                web_data["in_app_purchase_list"] = iap_list
+
+        # Extract support links from Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section:
+            links = info_section.find_all("a")
+            for link in links:
+                href = link.get("href")
+                text = link.get_text()
+                if href:
+                    if "App Support" in text:
+                        web_data["app_support_url"] = href
+                    elif "Privacy Policy" in text:
+                        web_data["privacy_policy_url"] = href
+                    elif "Developer Website" in text:
+                        web_data["developer_website_url"] = href
 
         # Extract privacy information
         privacy_section = soup.find("section", class_="section--app-privacy")
@@ -329,6 +367,7 @@ class CombinedAppStoreScraper:
             formatted_price=itunes_data.get("formattedPrice", "Free"),
             currency=itunes_data.get("currency", "USD"),
             in_app_purchases=web_data.get("in_app_purchases"),
+            in_app_purchase_list=web_data.get("in_app_purchase_list", []),
             # Version info
             current_version=itunes_data.get("version", "Unknown"),
             current_version_release_date=(
@@ -372,6 +411,16 @@ class CombinedAppStoreScraper:
             ipad_screenshots=[
                 HttpUrl(url) for url in itunes_data.get("ipadScreenshotUrls", [])
             ],
+            # Support links
+            app_support_url=HttpUrl(web_data["app_support_url"])
+            if web_data.get("app_support_url")
+            else None,
+            privacy_policy_url=HttpUrl(web_data["privacy_policy_url"])
+            if web_data.get("privacy_policy_url")
+            else None,
+            developer_website_url=HttpUrl(web_data["developer_website_url"])
+            if web_data.get("developer_website_url")
+            else None,
             # Privacy
             privacy=web_data.get("privacy"),
             # Related content

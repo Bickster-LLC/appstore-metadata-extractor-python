@@ -9,6 +9,8 @@ Extract and monitor metadata from Apple App Store applications with ease.
 ## Features
 
 - 📱 **Extract comprehensive app metadata** - title, description, version, ratings, and more
+- 💰 **In-App Purchase details** - extract names and prices of all IAP items
+- 🔗 **Support links** - app support, privacy policy, and developer website URLs
 - 🔄 **Track version changes** - monitor app updates and metadata changes over time
 - 🚀 **Async support** - fast concurrent extraction for multiple apps
 - 💪 **Robust error handling** - automatic retries and graceful error recovery
@@ -57,6 +59,18 @@ metadata = scraper.extract("https://apps.apple.com/us/app/example/id123456789")
 print(f"App: {metadata.title}")
 print(f"Version: {metadata.version}")
 print(f"Rating: {metadata.rating}")
+
+# Access In-App Purchases
+if metadata.in_app_purchases:
+    print(f"\nIn-App Purchases ({len(metadata.in_app_purchase_list)} items):")
+    for iap in metadata.in_app_purchase_list:
+        print(f"  - {iap['name']}: {iap['price']}")
+
+# Access Support Links
+print(f"\nSupport Links:")
+print(f"  App Support: {metadata.app_support_url}")
+print(f"  Privacy Policy: {metadata.privacy_policy_url}")
+print(f"  Developer Website: {metadata.developer_website_url}")
 
 # Extract multiple apps
 urls = [
@@ -140,6 +154,43 @@ For batch operations, use a JSON file:
   ]
 }
 ```
+
+## Extracted Fields
+
+The extractor provides comprehensive app metadata including:
+
+### Basic Information
+- App name, subtitle, and description
+- Developer name and ID
+- Bundle ID and App ID
+- Categories and age rating
+- Current version and release date
+- File size and supported languages
+
+### Pricing & Purchases
+- App price and currency
+- **In-App Purchases** (web scraping required):
+  - Item names and prices
+  - IAP type detection (subscriptions, consumables, etc.)
+
+### Ratings & Reviews
+- Average rating and rating count
+- Rating distribution (web scraping required)
+- User reviews (web scraping required)
+
+### Media Assets
+- App icon URL (multiple sizes)
+- Screenshot URLs (iPhone and iPad)
+
+### Support Links (web scraping required)
+- **App Support URL** - Direct link to app support page
+- **Privacy Policy URL** - Link to privacy policy
+- **Developer Website URL** - Main developer website
+
+### Technical Details
+- Minimum OS version
+- Supported devices
+- Version history
 
 ## Advanced Usage
 

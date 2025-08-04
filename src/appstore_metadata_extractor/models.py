@@ -13,6 +13,9 @@ class AppMetadata(BaseModel):
     category: str = Field(..., description="App category")
     price: Optional[str] = Field(None, description="App price")
     in_app_purchases: bool = Field(False, description="Has in-app purchases")
+    in_app_purchase_list: List[Dict[str, str]] = Field(
+        default_factory=list, description="List of IAPs with names and prices"
+    )
     description: Optional[str] = Field(None, description="App description")
     version: str = Field(..., description="Current app version")
     version_date: Optional[datetime] = Field(None, description="Version release date")
@@ -25,6 +28,13 @@ class AppMetadata(BaseModel):
     rating_count: Optional[int] = Field(None, description="Number of ratings")
     screenshots: List[str] = Field(default_factory=list, description="Screenshot URLs")
     icon_url: Optional[HttpUrl] = Field(None, description="App icon URL")
+    app_support_url: Optional[HttpUrl] = Field(None, description="App support URL")
+    privacy_policy_url: Optional[HttpUrl] = Field(
+        None, description="Privacy policy URL"
+    )
+    developer_website_url: Optional[HttpUrl] = Field(
+        None, description="Developer website URL"
+    )
     whats_new: Optional[str] = Field(None, description="What's new in this version")
     scraped_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Scrape timestamp"

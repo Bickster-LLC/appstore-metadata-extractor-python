@@ -92,9 +92,33 @@ class AppStoreScraper:
 
         # Check for in-app purchases
         in_app_purchases = False
-        in_app_elem = soup.find("dt", string=re.compile("In-App Purchases"))
-        if in_app_elem:
-            in_app_purchases = True
+        in_app_purchase_list = []
+
+        # Look for the Information section
+        info_section = soup.find("section", class_="section section--information")
+        if not info_section:
+            info_section = soup.find("section", {"class": re.compile("information")})
+
+        if info_section:
+            in_app_elem = info_section.find("dt", string=re.compile("In-App Purchases"))
+            if in_app_elem:
+                in_app_purchases = True
+
+                # Extract detailed IAP information
+                iap_dd = in_app_elem.find_next_sibling("dd")
+                if iap_dd:
+                    items = iap_dd.find_all("li")
+                    for item in items:
+                        text = item.get_text(strip=True)
+                        # The text might be concatenated like "Headspace$12.99"
+                        # Look for price pattern at the end
+                        price_match = re.search(r"(\$[\d.,]+)$", text)
+                        if price_match:
+                            price_str = price_match.group(1)
+                            name = text[: price_match.start()].strip()
+                            in_app_purchase_list.append(
+                                {"name": name, "price": price_str}
+                            )
 
         # Extract version information
         version = "Unknown"
@@ -237,6 +261,25 @@ class AppStoreScraper:
             # Filter to get only the main screenshots (not iPad ones)
             screenshots = [url for url in screenshots if "643x0w" in url][:5]
 
+        # Extract support links
+        app_support_url = None
+        privacy_policy_url = None
+        developer_website_url = None
+
+        # Look for links in Information section
+        if info_section:
+            links = info_section.find_all("a")
+            for link in links:
+                href = link.get("href")
+                text = link.get_text()
+                if href:
+                    if "App Support" in text:
+                        app_support_url = href
+                    elif "Privacy Policy" in text:
+                        privacy_policy_url = href
+                    elif "Developer Website" in text:
+                        developer_website_url = href
+
         # Extract what's new
         whats_new = None
         if whats_new_section:
@@ -268,6 +311,7 @@ class AppStoreScraper:
             category=category,
             price=price,
             in_app_purchases=in_app_purchases,
+            in_app_purchase_list=in_app_purchase_list,
             description=description,
             version=version,
             version_date=version_date,
@@ -278,6 +322,13 @@ class AppStoreScraper:
             rating_count=rating_count,
             screenshots=screenshots,
             icon_url=HttpUrl(icon_url) if icon_url else None,
+            app_support_url=HttpUrl(app_support_url) if app_support_url else None,
+            privacy_policy_url=HttpUrl(privacy_policy_url)
+            if privacy_policy_url
+            else None,
+            developer_website_url=HttpUrl(developer_website_url)
+            if developer_website_url
+            else None,
             whats_new=whats_new,
         )
 

@@ -85,6 +85,10 @@ class AppMetadataCombined(BaseModel):
     formatted_price: str = Field("Free", description="Formatted price string")
     currency: str = Field("USD", description="Currency code")
     in_app_purchases: Optional[bool] = Field(None, description="Has IAPs - WEB ONLY")
+    in_app_purchase_list: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="List of IAPs with names and prices - WEB ONLY",
+    )
 
     # Version info
     current_version: str = Field(..., description="Current version number")
@@ -145,6 +149,17 @@ class AppMetadataCombined(BaseModel):
     )
     ipad_screenshots: List[HttpUrl] = Field(
         default_factory=list, description="iPad screenshots"
+    )
+
+    # Support links (WEB ONLY)
+    app_support_url: Optional[HttpUrl] = Field(
+        None, description="App support URL - WEB ONLY"
+    )
+    privacy_policy_url: Optional[HttpUrl] = Field(
+        None, description="Privacy policy URL - WEB ONLY"
+    )
+    developer_website_url: Optional[HttpUrl] = Field(
+        None, description="Developer website URL - WEB ONLY"
     )
 
     # Privacy (WEB ONLY)
