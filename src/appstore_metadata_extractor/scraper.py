@@ -323,12 +323,12 @@ class AppStoreScraper:
             screenshots=screenshots,
             icon_url=HttpUrl(icon_url) if icon_url else None,
             app_support_url=HttpUrl(app_support_url) if app_support_url else None,
-            privacy_policy_url=HttpUrl(privacy_policy_url)
-            if privacy_policy_url
-            else None,
-            developer_website_url=HttpUrl(developer_website_url)
-            if developer_website_url
-            else None,
+            privacy_policy_url=(
+                HttpUrl(privacy_policy_url) if privacy_policy_url else None
+            ),
+            developer_website_url=(
+                HttpUrl(developer_website_url) if developer_website_url else None
+            ),
             whats_new=whats_new,
         )
 

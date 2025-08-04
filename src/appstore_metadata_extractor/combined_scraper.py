@@ -412,15 +412,21 @@ class CombinedAppStoreScraper:
                 HttpUrl(url) for url in itunes_data.get("ipadScreenshotUrls", [])
             ],
             # Support links
-            app_support_url=HttpUrl(web_data["app_support_url"])
-            if web_data.get("app_support_url")
-            else None,
-            privacy_policy_url=HttpUrl(web_data["privacy_policy_url"])
-            if web_data.get("privacy_policy_url")
-            else None,
-            developer_website_url=HttpUrl(web_data["developer_website_url"])
-            if web_data.get("developer_website_url")
-            else None,
+            app_support_url=(
+                HttpUrl(web_data["app_support_url"])
+                if web_data.get("app_support_url")
+                else None
+            ),
+            privacy_policy_url=(
+                HttpUrl(web_data["privacy_policy_url"])
+                if web_data.get("privacy_policy_url")
+                else None
+            ),
+            developer_website_url=(
+                HttpUrl(web_data["developer_website_url"])
+                if web_data.get("developer_website_url")
+                else None
+            ),
             # Privacy
             privacy=web_data.get("privacy"),
             # Related content
