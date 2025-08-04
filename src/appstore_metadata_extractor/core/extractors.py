@@ -663,14 +663,26 @@ class WebScraperExtractor(BaseExtractor):
             # Look for links in the section
             links = info_section.find_all("a")
             for link in links:
-                if link.get("href") and "App Support" in link.get_text():
-                    return HttpUrl(link["href"])
+                if (
+                    isinstance(link, Tag)
+                    and link.get("href")
+                    and "App Support" in link.get_text()
+                ):
+                    href = link.get("href")
+                    if href:
+                        return HttpUrl(str(href))
 
         # Alternative: Look for footer links
         footer_links = soup.find_all("a", {"class": re.compile("link.*footer")})
         for link in footer_links:
-            if link.get("href") and "support" in link.get_text().lower():
-                return HttpUrl(link["href"])
+            if (
+                isinstance(link, Tag)
+                and link.get("href")
+                and "support" in link.get_text().lower()
+            ):
+                href = link.get("href")
+                if href:
+                    return HttpUrl(str(href))
 
         return None
 
@@ -685,14 +697,26 @@ class WebScraperExtractor(BaseExtractor):
             # Look for links in the section
             links = info_section.find_all("a")
             for link in links:
-                if link.get("href") and "Privacy Policy" in link.get_text():
-                    return HttpUrl(link["href"])
+                if (
+                    isinstance(link, Tag)
+                    and link.get("href")
+                    and "Privacy Policy" in link.get_text()
+                ):
+                    href = link.get("href")
+                    if href:
+                        return HttpUrl(str(href))
 
         # Alternative: Look for footer links
         footer_links = soup.find_all("a", {"class": re.compile("link.*footer")})
         for link in footer_links:
-            if link.get("href") and "privacy" in link.get_text().lower():
-                return HttpUrl(link["href"])
+            if (
+                isinstance(link, Tag)
+                and link.get("href")
+                and "privacy" in link.get_text().lower()
+            ):
+                href = link.get("href")
+                if href:
+                    return HttpUrl(str(href))
 
         return None
 
@@ -707,8 +731,14 @@ class WebScraperExtractor(BaseExtractor):
             # Look for links in the section
             links = info_section.find_all("a")
             for link in links:
-                if link.get("href") and "Developer Website" in link.get_text():
-                    return HttpUrl(link["href"])
+                if (
+                    isinstance(link, Tag)
+                    and link.get("href")
+                    and "Developer Website" in link.get_text()
+                ):
+                    href = link.get("href")
+                    if href:
+                        return HttpUrl(str(href))
 
         return None
 
