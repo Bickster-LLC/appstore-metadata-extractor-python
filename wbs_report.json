@@ -1,20 +1,20 @@
 {
-  "timestamp": "2025-08-05T14:48:00.977311+00:00",
+  "timestamp": "2025-08-05T15:53:42.831230+00:00",
   "config": {
     "purpose": "Track competing messaging apps metadata",
     "boundaries": {
       "required_fields": [
         "price",
-        "rating_count",
         "name",
-        "developer_name",
         "current_version",
+        "developer_name",
+        "rating_count",
         "app_id"
       ],
       "optional_fields": [
+        "in_app_purchases",
         "release_notes",
-        "subtitle",
-        "in_app_purchases"
+        "subtitle"
       ],
       "rate_limits": {
         "itunes_api": 20,
@@ -34,17 +34,17 @@
       "meets_success_criteria": true,
       "required_fields_present": [
         "price",
-        "rating_count",
         "name",
-        "developer_name",
         "current_version",
+        "developer_name",
+        "rating_count",
         "app_id"
       ],
       "optional_fields_present": [
-        "subtitle",
-        "in_app_purchases"
+        "in_app_purchases",
+        "subtitle"
       ],
-      "extraction_time": 2.9e-05,
+      "extraction_time": 3.2e-05,
       "errors": [],
       "warnings": [
         "Served from cache"
@@ -56,17 +56,17 @@
       "meets_success_criteria": true,
       "required_fields_present": [
         "price",
-        "rating_count",
         "name",
-        "developer_name",
         "current_version",
+        "developer_name",
+        "rating_count",
         "app_id"
       ],
       "optional_fields_present": [
-        "subtitle",
-        "in_app_purchases"
+        "in_app_purchases",
+        "subtitle"
       ],
-      "extraction_time": 2.195123,
+      "extraction_time": 2.556435,
       "errors": [],
       "warnings": []
     },
@@ -76,17 +76,17 @@
       "meets_success_criteria": true,
       "required_fields_present": [
         "price",
-        "rating_count",
         "name",
-        "developer_name",
         "current_version",
+        "developer_name",
+        "rating_count",
         "app_id"
       ],
       "optional_fields_present": [
-        "subtitle",
-        "in_app_purchases"
+        "in_app_purchases",
+        "subtitle"
       ],
-      "extraction_time": 2.194831,
+      "extraction_time": 2.55661,
       "errors": [],
       "warnings": []
     }

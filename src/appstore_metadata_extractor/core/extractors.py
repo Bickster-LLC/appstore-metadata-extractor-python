@@ -362,26 +362,30 @@ class WebScraperExtractor(BaseExtractor):
         languages = self._extract_languages(soup)
         if languages:
             extracted_data["languages"] = languages
+            # Generate language codes from language names
+            extracted_data["language_codes"] = self._generate_language_codes(languages)
 
-        # Extract detailed IAP information if app has IAPs
-        if extracted_data["in_app_purchases"]:
-            iap_data = self._extract_in_app_purchases(soup)
-            if iap_data:
-                # Convert to InAppPurchase objects
-                from .models import InAppPurchase, InAppPurchaseType
+        # Extract detailed IAP information
+        # Always try to extract IAPs, don't rely on the boolean flag
+        iap_data = self._extract_in_app_purchases(soup)
+        if iap_data:
+            # Convert to InAppPurchase objects
+            from .models import InAppPurchase, InAppPurchaseType
 
-                iap_list = []
-                for iap in iap_data:
-                    iap_obj = InAppPurchase(
-                        name=iap["name"],
-                        price=iap["price"],
-                        price_value=iap.get("price_value"),
-                        currency=iap.get("currency"),
-                        type=InAppPurchaseType(iap.get("type", "unknown")),
-                        description=None,
-                    )
-                    iap_list.append(iap_obj)
-                extracted_data["in_app_purchase_list"] = iap_list
+            iap_list = []
+            for iap in iap_data:
+                iap_obj = InAppPurchase(
+                    name=iap["name"],
+                    price=iap["price"],
+                    price_value=iap.get("price_value"),
+                    currency=iap.get("currency"),
+                    type=InAppPurchaseType(iap.get("type", "unknown")),
+                    description=None,
+                )
+                iap_list.append(iap_obj)
+            extracted_data["in_app_purchase_list"] = iap_list
+            # Update the boolean flag based on actual IAP data found
+            extracted_data["in_app_purchases"] = True
 
         metadata = ExtendedAppMetadata(**extracted_data)
 
@@ -478,52 +482,111 @@ class WebScraperExtractor(BaseExtractor):
                 # Find the corresponding dd element
                 iap_dd = iap_dt.find_next_sibling("dd")
                 if iap_dd and isinstance(iap_dd, Tag):
-                    # Look for list items within the dd
-                    items = iap_dd.find_all("li")
-                    for item in items:
-                        text = item.get_text(strip=True)
-                        # The text might be concatenated like "Headspace$12.99"
-                        # Look for price pattern at the end
-                        price_match = re.search(r"(\$[\d.,]+)$", text)
-                        if price_match:
-                            price_str = price_match.group(1)
-                            name = text[: price_match.start()].strip()
-
-                            # Extract numeric price
-                            price_value = None
-                            try:
-                                price_value = float(re.sub(r"[^\d.]", "", price_str))
-                            except Exception:
-                                pass
-
-                            # Determine IAP type based on name
-                            iap_type = "unknown"
-                            name_lower = name.lower()
-                            if any(
-                                word in name_lower
-                                for word in [
-                                    "monthly",
-                                    "month",
-                                    "annual",
-                                    "year",
-                                    "weekly",
-                                    "week",
-                                    "subscription",
-                                ]
-                            ):
-                                iap_type = "auto_renewable_subscription"
-                            elif "lifetime" in name_lower:
-                                iap_type = "non_consumable"
-
-                            iap_list.append(
-                                {
-                                    "name": name,
-                                    "price": price_str,
-                                    "price_value": price_value,
-                                    "currency": "USD",
-                                    "type": iap_type,
-                                }
+                    # Method 1: New structure with separate spans (as of 2025)
+                    items = iap_dd.find_all("li", class_="list-with-numbers__item")
+                    if items:
+                        for item in items:
+                            # Extract name from title span
+                            title_span = item.find(
+                                "span", class_="list-with-numbers__item__title"
                             )
+                            # Extract price from price span
+                            price_span = item.find(
+                                "span", class_="list-with-numbers__item__price"
+                            )
+
+                            if title_span and price_span:
+                                name = title_span.get_text(strip=True)
+                                price_str = price_span.get_text(strip=True)
+
+                                # Extract numeric price
+                                price_value = None
+                                try:
+                                    price_value = float(
+                                        re.sub(r"[^\d.]", "", price_str)
+                                    )
+                                except Exception:
+                                    pass
+
+                                # Determine IAP type based on name
+                                iap_type = "unknown"
+                                name_lower = name.lower()
+                                if any(
+                                    word in name_lower
+                                    for word in [
+                                        "monthly",
+                                        "month",
+                                        "annual",
+                                        "year",
+                                        "weekly",
+                                        "week",
+                                        "subscription",
+                                    ]
+                                ):
+                                    iap_type = "auto_renewable_subscription"
+                                elif "lifetime" in name_lower:
+                                    iap_type = "non_consumable"
+
+                                iap_list.append(
+                                    {
+                                        "name": name,
+                                        "price": price_str,
+                                        "price_value": price_value,
+                                        "currency": "USD",
+                                        "type": iap_type,
+                                    }
+                                )
+
+                    # Method 2: Old structure with concatenated text (fallback)
+                    if not iap_list:
+                        # Try the old method where items might be in plain li tags
+                        items = iap_dd.find_all("li")
+                        for item in items:
+                            text = item.get_text(strip=True)
+                            # The text might be concatenated like "Headspace$12.99"
+                            # Look for price pattern at the end
+                            price_match = re.search(r"(\$[\d.,]+)$", text)
+                            if price_match:
+                                price_str = price_match.group(1)
+                                name = text[: price_match.start()].strip()
+
+                                # Extract numeric price
+                                price_value = None
+                                try:
+                                    price_value = float(
+                                        re.sub(r"[^\d.]", "", price_str)
+                                    )
+                                except Exception:
+                                    pass
+
+                                # Determine IAP type based on name
+                                iap_type = "unknown"
+                                name_lower = name.lower()
+                                if any(
+                                    word in name_lower
+                                    for word in [
+                                        "monthly",
+                                        "month",
+                                        "annual",
+                                        "year",
+                                        "weekly",
+                                        "week",
+                                        "subscription",
+                                    ]
+                                ):
+                                    iap_type = "auto_renewable_subscription"
+                                elif "lifetime" in name_lower:
+                                    iap_type = "non_consumable"
+
+                                iap_list.append(
+                                    {
+                                        "name": name,
+                                        "price": price_str,
+                                        "price_value": price_value,
+                                        "currency": "USD",
+                                        "type": iap_type,
+                                    }
+                                )
 
         return iap_list
 
@@ -644,13 +707,122 @@ class WebScraperExtractor(BaseExtractor):
     def _extract_languages(self, soup: BeautifulSoup) -> List[str]:
         """Extract supported languages."""
         languages: List[str] = []
+
+        # Method 1: Try the old structure with section--languages
         lang_section = soup.find("section", class_="section--languages")
         if isinstance(lang_section, Tag):
             lang_items = lang_section.find_all("li")
             for item in lang_items:
                 if hasattr(item, "text"):
                     languages.append(item.text.strip())
+
+        # Method 2: Try the new structure with dt/dd tags
+        if not languages:
+            # Find dt tag with "Languages" text
+            dt_tags = soup.find_all("dt")
+            for dt in dt_tags:
+                if dt.text.strip() == "Languages":
+                    # Get the next dd sibling
+                    dd = dt.find_next_sibling("dd")
+                    if dd and hasattr(dd, "text"):
+                        # The languages are in a comma-separated list
+                        lang_text = dd.text.strip()
+                        if lang_text:
+                            # Split by comma and clean up each language
+                            languages = [lang.strip() for lang in lang_text.split(",")]
+                            break
+
         return languages
+
+    def _generate_language_codes(self, languages: List[str]) -> List[str]:
+        """Generate ISO language codes from language names."""
+        # Common language name to ISO code mapping
+        language_map = {
+            "English": "EN",
+            "Spanish": "ES",
+            "French": "FR",
+            "German": "DE",
+            "Italian": "IT",
+            "Portuguese": "PT",
+            "Dutch": "NL",
+            "Russian": "RU",
+            "Japanese": "JA",
+            "Korean": "KO",
+            "Chinese": "ZH",
+            "Simplified Chinese": "ZH",
+            "Traditional Chinese": "ZH",
+            "Arabic": "AR",
+            "Hebrew": "HE",
+            "Hindi": "HI",
+            "Thai": "TH",
+            "Turkish": "TR",
+            "Polish": "PL",
+            "Swedish": "SV",
+            "Danish": "DA",
+            "Norwegian": "NO",
+            "Norwegian Bokmål": "NB",
+            "Finnish": "FI",
+            "Greek": "EL",
+            "Czech": "CS",
+            "Slovak": "SK",
+            "Hungarian": "HU",
+            "Romanian": "RO",
+            "Bulgarian": "BG",
+            "Croatian": "HR",
+            "Serbian": "SR",
+            "Ukrainian": "UK",
+            "Indonesian": "ID",
+            "Vietnamese": "VI",
+            "Malay": "MS",
+            "Bengali": "BN",
+            "Tamil": "TA",
+            "Telugu": "TE",
+            "Marathi": "MR",
+            "Gujarati": "GU",
+            "Kannada": "KN",
+            "Malayalam": "ML",
+            "Punjabi": "PA",
+            "Urdu": "UR",
+            "Persian": "FA",
+            "Farsi": "FA",
+            "Swahili": "SW",
+            "Amharic": "AM",
+            "Albanian": "SQ",
+            "Armenian": "HY",
+            "Azerbaijani": "AZ",
+            "Basque": "EU",
+            "Belarusian": "BE",
+            "Bosnian": "BS",
+            "Burmese": "MY",
+            "Catalan": "CA",
+            "Estonian": "ET",
+            "Georgian": "KA",
+            "Icelandic": "IS",
+            "Kazakh": "KK",
+            "Latvian": "LV",
+            "Lithuanian": "LT",
+            "Macedonian": "MK",
+            "Mongolian": "MN",
+            "Slovenian": "SL",
+            "Somali": "SO",
+            "Tagalog": "TL",
+        }
+
+        codes = []
+        for lang in languages:
+            # Try to match the language name
+            code = language_map.get(lang, "")
+            if not code:
+                # Try to extract a 2-letter code from the language name
+                # For cases like "GA" or "PT" that appear as-is
+                if len(lang) == 2 and lang.isupper():
+                    code = lang
+                else:
+                    # Default to first two letters in uppercase
+                    code = lang[:2].upper() if len(lang) >= 2 else lang.upper()
+            codes.append(code)
+
+        return codes
 
     def _extract_app_support_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
         """Extract app support URL."""
@@ -760,16 +932,11 @@ class CombinedExtractor(BaseExtractor):
         # Try iTunes API first (faster and more reliable)
         try:
             itunes_result = await self.itunes_extractor.extract(url)
-
-            # If we got all required fields from iTunes, we might be done
-            if self._has_all_required_fields(itunes_result):
-                itunes_result.extraction_method = ExtractionMode.SMART
-                return itunes_result
-
         except Exception:
             itunes_result = None
 
-        # Try web scraping for additional data
+        # Always try web scraping to get complete data (IAPs, languages, etc.)
+        # Note: Removed the early return logic that skipped web scraping
         try:
             web_result = await self.web_extractor.extract(url)
         except Exception:
@@ -837,19 +1004,26 @@ class CombinedExtractor(BaseExtractor):
 
     def _merge_metadata(
         self, itunes_data: Optional[AppMetadata], web_data: Optional[AppMetadata]
-    ) -> AppMetadata:
+    ) -> ExtendedAppMetadata:
         """Merge metadata from both sources, preferring iTunes for most fields."""
         if not itunes_data and web_data:
-            return web_data
+            if isinstance(web_data, ExtendedAppMetadata):
+                return web_data
+            else:
+                # Convert to ExtendedAppMetadata
+                return ExtendedAppMetadata(**web_data.model_dump())
         if not web_data and itunes_data:
-            return itunes_data
+            # Convert iTunes data to ExtendedAppMetadata
+            return ExtendedAppMetadata(**itunes_data.model_dump())
         if not itunes_data and not web_data:
             raise ValueError("Both iTunes and web data are None")
 
         # Start with iTunes data and fill in missing fields from web
         # At this point, both itunes_data and web_data must be non-None
         assert itunes_data is not None and web_data is not None
-        merged = itunes_data.model_copy()
+
+        # Convert to ExtendedAppMetadata to ensure we have all fields
+        merged = ExtendedAppMetadata(**itunes_data.model_dump())
 
         # Fields that are better from web scraping
         if web_data.subtitle:
@@ -871,6 +1045,12 @@ class CombinedExtractor(BaseExtractor):
         if web_data.developer_website_url:
             merged.developer_website_url = web_data.developer_website_url
 
+        # Merge languages (only available from web scraping)
+        if hasattr(web_data, "languages") and web_data.languages:
+            merged.languages = web_data.languages
+        if hasattr(web_data, "language_codes") and web_data.language_codes:
+            merged.language_codes = web_data.language_codes
+
         # Use web screenshots if more available
         if len(web_data.screenshots) > len(merged.screenshots):
             merged.screenshots = web_data.screenshots
@@ -887,16 +1067,17 @@ class CombinedExtractor(BaseExtractor):
 
         Args:
             url: App Store URL
-            skip_web_scraping: If True, only use iTunes API (faster)
+            skip_web_scraping: If True, only use iTunes API (faster but less data)
+                             If False (default), use both iTunes API and web scraping
 
         Returns:
             ExtractionResult with metadata
         """
         if skip_web_scraping:
-            # iTunes API only mode
+            # iTunes API only mode - fast but limited data
             return await self.itunes_extractor.extract(url)
         else:
-            # Full combined mode
+            # Full combined mode - includes IAPs, languages, support URLs, etc.
             return await self.extract(url)
 
     def fetch(self, url: str, skip_web_scraping: bool = False) -> AppMetadata:
@@ -904,10 +1085,11 @@ class CombinedExtractor(BaseExtractor):
 
         Args:
             url: App Store URL
-            skip_web_scraping: If True, only use iTunes API
+            skip_web_scraping: If True, only use iTunes API (faster but no IAPs/languages).
+                             If False (default), use both iTunes API and web scraping.
 
         Returns:
-            AppMetadata object
+            AppMetadata object with complete data including IAPs and languages
 
         Raises:
             Exception: If extraction fails
@@ -940,7 +1122,8 @@ class CombinedExtractor(BaseExtractor):
 
         Args:
             urls: List of App Store URLs
-            skip_web_scraping: If True, only use iTunes API
+            skip_web_scraping: If True, only use iTunes API (faster but no IAPs/languages).
+                             If False (default), use both iTunes API and web scraping.
 
         Returns:
             Dictionary mapping URL to AppMetadata (only successful extractions)
@@ -993,7 +1176,14 @@ class CombinedExtractor(BaseExtractor):
             ):
                 iap_list = []
                 for iap in metadata_dict["in_app_purchase_list"]:
-                    iap_dict = iap if isinstance(iap, dict) else iap.model_dump()
+                    if hasattr(iap, "model_dump"):
+                        # It's a Pydantic model, serialize it properly
+                        iap_dict = iap.model_dump(mode="json")
+                    elif isinstance(iap, dict):
+                        iap_dict = iap.copy()
+                    else:
+                        continue
+
                     # Ensure price_value is string if present
                     if (
                         "price_value" in iap_dict
@@ -1003,6 +1193,9 @@ class CombinedExtractor(BaseExtractor):
                     # Ensure description is string
                     if "description" not in iap_dict or iap_dict["description"] is None:
                         iap_dict["description"] = ""
+                    # Ensure type is string
+                    if "type" in iap_dict and hasattr(iap_dict["type"], "value"):
+                        iap_dict["type"] = iap_dict["type"].value
                     iap_list.append(iap_dict)
                 metadata_dict["in_app_purchase_list"] = iap_list
 

@@ -169,9 +169,10 @@ The extractor provides comprehensive app metadata including:
 
 ### Pricing & Purchases
 - App price and currency
-- **In-App Purchases** (web scraping required):
+- **In-App Purchases** (automatically extracted by default):
   - Item names and prices
   - IAP type detection (subscriptions, consumables, etc.)
+  - Note: Set `skip_web_scraping=True` for faster extraction without IAPs
 
 ### Ratings & Reviews
 - Average rating and rating count

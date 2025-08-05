@@ -189,9 +189,15 @@ async def test_iap_extraction():
         if metadata.in_app_purchase_list:
             print(f"Found {len(metadata.in_app_purchase_list)} IAP items:")
             for iap in metadata.in_app_purchase_list[:5]:  # Show first 5
-                print(f"  - {iap.name}: {iap.price}")
-                assert iap.name is not None
-                assert iap.price is not None
+                # Handle both dict and object formats
+                if isinstance(iap, dict):
+                    print(f"  - {iap['name']}: {iap['price']}")
+                    assert iap["name"] is not None
+                    assert iap["price"] is not None
+                else:
+                    print(f"  - {iap.name}: {iap.price}")
+                    assert iap.name is not None
+                    assert iap.price is not None
 
         # Note: IAP detection depends on web scraping and may change
         # Just ensure the extraction doesn't fail

@@ -5,13 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.6] - 2025-08-05
+## [0.1.7] - 2025-08-05
 
 ### Changed
 - **BREAKING**: Removed `CombinedAppStoreScraper` class - use `CombinedExtractor` instead
   - Added backward compatibility alias: `CombinedAppStoreScraper = CombinedExtractor`
   - All functionality has been preserved and enhanced
 - Consolidated all combined extraction logic into the WBS-compliant `CombinedExtractor`
+- **Web scraping is now truly performed by default** - removed "smart" logic that could skip web scraping
+
+### Improved
+- **Language extraction** now supports new App Store HTML structure (dt/dd tags)
+- **IAP extraction** improved to handle both old and new HTML formats
+- IAP extraction now works regardless of the boolean flag value
+- Added automatic language code generation from language names (60+ languages supported)
+
+### Fixed
+- Fixed issue where web scraping could be skipped even when `skip_web_scraping=False`
+- Language extraction now correctly handles new HTML structure with dt/dd tags
+- IAP extraction now supports both concatenated format and separate span elements
+
+## [0.1.6] - 2025-08-05
+
+### Changed
 - Aligned pre-commit hooks with CI/CD pipeline configuration for consistency
 
 ### Added
