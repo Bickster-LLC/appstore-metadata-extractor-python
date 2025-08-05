@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2025-08-05
+
+### Changed
+- **BREAKING**: Removed `CombinedAppStoreScraper` class - use `CombinedExtractor` instead
+  - Added backward compatibility alias: `CombinedAppStoreScraper = CombinedExtractor`
+  - All functionality has been preserved and enhanced
+- Consolidated all combined extraction logic into the WBS-compliant `CombinedExtractor`
+- Aligned pre-commit hooks with CI/CD pipeline configuration for consistency
+
+### Added
+- Synchronous wrapper methods for easier migration:
+  - `fetch()` - Single app extraction with synchronous interface
+  - `fetch_batch()` - Multiple app extraction with synchronous interface
+- Support for extraction modes:
+  - iTunes-only mode (fast) via `skip_web_scraping=True`
+  - Combined mode (complete) via `skip_web_scraping=False`
+- Comprehensive unit tests for `CombinedExtractor`
+- Integration tests that verify real App Store API calls
+
+### Fixed
+- Fixed all mypy type errors in support link extraction
+- Added proper type guards for BeautifulSoup Tag objects
+- Fixed import errors for `DataSource` and `InAppPurchase` models
+- Corrected asyncio event loop handling in tests
+
+### Improved
+- Enhanced type safety with full mypy compliance
+- Increased test coverage to 71%
+- Better error messages for extraction failures
+
 ## [0.1.5] - 2025-08-04
 
 ### Fixed

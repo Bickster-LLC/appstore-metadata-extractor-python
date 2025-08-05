@@ -192,6 +192,30 @@ The extractor provides comprehensive app metadata including:
 - Supported devices
 - Version history
 
+## Migration Guide (v0.1.6)
+
+If you were using `CombinedAppStoreScraper`, it has been consolidated into `CombinedExtractor`. The old class name still works via an alias, but we recommend updating your code:
+
+```python
+# Old way (still works via alias)
+from appstore_metadata_extractor import CombinedAppStoreScraper
+scraper = CombinedAppStoreScraper()
+result = scraper.fetch(url)
+
+# New way (recommended)
+from appstore_metadata_extractor import CombinedExtractor
+extractor = CombinedExtractor()
+metadata = extractor.fetch(url)  # Synchronous method
+# or
+result = await extractor.extract(url)  # Async method
+```
+
+The new `CombinedExtractor` offers:
+- Full backward compatibility
+- Better type safety
+- Support for extraction modes (iTunes-only vs combined)
+- Both sync and async interfaces
+
 ## Advanced Usage
 
 ### Custom Extraction Modes
