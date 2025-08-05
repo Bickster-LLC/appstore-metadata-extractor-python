@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2025-08-05
+
+### Fixed
+- Added proper type guards in IAP extraction to fix mypy errors
+- **Critical**: Publish workflow now requires all tests to pass before releasing to PyPI
+  - Prevents broken releases from being published
+  - Tests run on Python 3.11, 3.12, and 3.13
+
+### Added
+- Added `types-beautifulsoup4` to development dependencies for consistent type checking
+
+### Security
+- Releases are now gated by comprehensive test suite including:
+  - Black formatting checks
+  - isort import ordering
+  - flake8 linting
+  - mypy type checking
+  - pytest unit and integration tests
+
 ## [0.1.7] - 2025-08-05
 
 ### Changed
