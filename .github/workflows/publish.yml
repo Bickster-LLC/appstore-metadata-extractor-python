@@ -5,7 +5,48 @@ on:
     types: [published]
 
 jobs:
+  # Run tests first to ensure code quality
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Lint with black
+      run: |
+        black --check src tests
+
+    - name: Lint with isort
+      run: |
+        isort --check-only src tests
+
+    - name: Lint with flake8
+      run: |
+        flake8 src tests
+
+    - name: Type check with mypy
+      run: |
+        mypy src
+
+    - name: Test with pytest
+      run: |
+        pytest -v
+
   build:
+    needs: test  # Only build if tests pass
     runs-on: ubuntu-latest
 
     steps:
