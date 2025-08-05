@@ -160,38 +160,98 @@ For batch operations, use a JSON file:
 The extractor provides comprehensive app metadata including:
 
 ### Basic Information
-- App name, subtitle, and description
-- Developer name and ID
-- Bundle ID and App ID
-- Categories and age rating
-- Current version and release date
-- File size and supported languages
+- **app_id** - Apple App Store ID
+- **bundle_id** - App bundle identifier
+- **url** - App Store URL
+- **name** - App name
+- **subtitle** - App subtitle/tagline (web scraping required)
+- **developer_name** - Developer name
+- **developer_id** - Developer ID
+- **developer_url** - Developer page URL
+
+### Categories
+- **category** / **primary_category** - Primary category name
+- **category_id** / **primary_category_id** - Primary category ID
+- **categories** - List of all categories
+- **category_ids** - List of all category IDs
 
 ### Pricing & Purchases
-- App price and currency
-- **In-App Purchases** (automatically extracted by default):
-  - Item names and prices
-  - IAP type detection (subscriptions, consumables, etc.)
-  - Note: Set `skip_web_scraping=True` for faster extraction without IAPs
+- **price** - App price (numeric value)
+- **formatted_price** - Formatted price string (e.g., "$4.99" or "Free")
+- **currency** - Currency code (e.g., "USD")
+- **in_app_purchases** - Boolean indicating if app has IAPs
+- **in_app_purchase_list** - Detailed list of IAPs (web scraping required):
+  - name - IAP item name
+  - price - Formatted price
+  - price_value - Numeric price
+  - type - IAP type (auto_renewable_subscription, non_consumable, etc.)
+  - currency - Currency code
+
+### Version Information
+- **current_version** - Current version number
+- **version_date** / **current_version_release_date** - Release date
+- **whats_new** / **release_notes** - What's new in this version
+- **version_history** - List of previous versions (web scraping required)
+- **initial_release_date** - First release date
+- **last_updated** - Last update to any field
+
+### Content & Description
+- **description** - Full app description
+- **content_rating** - Age rating (e.g., "4+", "12+")
+- **content_advisories** - List of content warnings
+
+### Languages (web scraping required)
+- **languages** - Human-readable language names (e.g., "English", "Spanish")
+- **language_codes** - ISO language codes (e.g., "EN", "ES")
 
 ### Ratings & Reviews
-- Average rating and rating count
-- Rating distribution (web scraping required)
-- User reviews (web scraping required)
+- **average_rating** - Average user rating (0-5)
+- **rating_count** - Total number of ratings
+- **average_rating_current_version** - Rating for current version
+- **rating_count_current_version** - Ratings for current version
+- **rating_distribution** - Star breakdown (web scraping required)
+- **reviews** - User reviews list (web scraping required)
 
 ### Media Assets
-- App icon URL (multiple sizes)
-- Screenshot URLs (iPhone and iPad)
+- **icon_url** - App icon URL (512x512)
+- **icon_urls** - Dictionary of multiple icon sizes
+- **screenshots** - List of iPhone screenshot URLs
+- **ipad_screenshots** - List of iPad screenshot URLs
 
 ### Support Links (web scraping required)
-- **App Support URL** - Direct link to app support page
-- **Privacy Policy URL** - Link to privacy policy
-- **Developer Website URL** - Main developer website
+- **app_support_url** - Direct link to app support page
+- **privacy_policy_url** - Link to privacy policy
+- **developer_website_url** - Main developer website
+- **support_url** - Support website (alias)
+- **marketing_url** - Marketing website
 
 ### Technical Details
-- Minimum OS version
-- Supported devices
-- Version history
+- **file_size_bytes** - Size in bytes
+- **file_size_formatted** - Human-readable size (e.g., "245.8 MB")
+- **minimum_os_version** - Minimum iOS version required
+- **supported_devices** - List of compatible devices
+
+### Features & Capabilities
+- **features** - List of app features/capabilities
+- **is_game_center_enabled** - Game Center support
+- **is_vpp_device_based_licensing_enabled** - VPP device licensing
+
+### Privacy Information (web scraping required)
+- **privacy** - Detailed privacy information including:
+  - data_used_to_track
+  - data_linked_to_you
+  - data_not_linked_to_you
+  - privacy_details_url
+
+### Related Content (web scraping required)
+- **developer_apps** - Other apps by the same developer
+- **similar_apps** - "You might also like" recommendations
+- **rankings** - Chart positions (e.g., {"Games": 5, "Overall": 23})
+
+### Metadata
+- **data_source** - Source of the data (itunes_api, web_scrape, combined)
+- **extracted_at** / **scraped_at** - When data was collected
+- **raw_data** - Raw response data (optional, for debugging)
 
 ## Migration Guide (v0.1.6)
 
