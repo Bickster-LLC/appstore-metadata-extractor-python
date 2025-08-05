@@ -486,6 +486,8 @@ class WebScraperExtractor(BaseExtractor):
                     items = iap_dd.find_all("li", class_="list-with-numbers__item")
                     if items:
                         for item in items:
+                            if not isinstance(item, Tag):
+                                continue
                             # Extract name from title span
                             title_span = item.find(
                                 "span", class_="list-with-numbers__item__title"
@@ -495,7 +497,9 @@ class WebScraperExtractor(BaseExtractor):
                                 "span", class_="list-with-numbers__item__price"
                             )
 
-                            if title_span and price_span:
+                            if isinstance(title_span, Tag) and isinstance(
+                                price_span, Tag
+                            ):
                                 name = title_span.get_text(strip=True)
                                 price_str = price_span.get_text(strip=True)
 
