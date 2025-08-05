@@ -265,9 +265,9 @@
     "similar_apps": [],
     "rankings": {},
     "initial_release_date": "2009-05-04 02:43:49+00:00",
-    "last_updated": "2025-08-04 15:23:17.867978+00:00",
+    "last_updated": "2025-08-04 19:52:22.535162+00:00",
     "data_source": "combined",
-    "scraped_at": "2025-08-04 15:23:17.868027",
+    "scraped_at": "2025-08-04 19:52:22.535226",
     "features": [
       "iosUniversal"
     ],
@@ -281,5 +281,5 @@
     "web_scrape"
   ],
   "warnings": [],
-  "timestamp": "2025-08-04T15:23:17.868541+00:00"
+  "timestamp": "2025-08-04T19:52:22.536046+00:00"
 }

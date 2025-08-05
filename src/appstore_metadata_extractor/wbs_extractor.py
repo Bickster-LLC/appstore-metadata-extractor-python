@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Optional, Set
 
 from pydantic import BaseModel, Field, field_validator
 
-from .combined_scraper import CombinedAppStoreScraper
+from .core import CombinedExtractor
+from .core import WBSConfig as CoreWBSConfig
 from .models_combined import AppMetadataCombined, DataSource
 
 
@@ -133,8 +134,12 @@ class WBSMetadataExtractor:
 
     def __init__(self, config: WBSConfig):
         self.config = config
-        self.scraper = CombinedAppStoreScraper(
-            timeout=config.boundaries.timeout_seconds
+        # Create core WBS config for the extractor
+        core_config = CoreWBSConfig(what="Extract and track App Store metadata")
+        core_config.boundaries.timeout_seconds = config.boundaries.timeout_seconds
+
+        self.extractor = CombinedExtractor(
+            wbs_config=core_config, timeout=config.boundaries.timeout_seconds
         )
         self._rate_limiter = RateLimiter(
             itunes_limit=config.boundaries.itunes_api_rate_limit,
@@ -170,7 +175,7 @@ class WBSMetadataExtractor:
                 skip_web = self._should_skip_web_scraping(mode)
 
                 # Perform extraction
-                scrape_result = await self.scraper.fetch_combined(
+                scrape_result = await self.extractor.fetch_combined(
                     app_url, skip_web_scraping=skip_web
                 )
 

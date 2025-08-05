@@ -98,8 +98,7 @@ strict_equality = true
 # BeautifulSoup and web scraping modules have dynamic APIs
 # that cause many false positive type errors
 module = [
-    "appstore_metadata_extractor.scraper",
-    "appstore_metadata_extractor.combined_scraper"
+    "appstore_metadata_extractor.scraper"
 ]
 ignore_errors = true  # Too many BeautifulSoup false positives
 warn_unused_ignores = true

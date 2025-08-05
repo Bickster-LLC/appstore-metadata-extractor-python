@@ -13,9 +13,12 @@ from .extractors import (
 )
 from .models import (
     AppMetadata,
+    DataSource,
     ExtendedAppMetadata,
     ExtractionMode,
     ExtractionResult,
+    InAppPurchase,
+    InAppPurchaseType,
     WBSBoundaries,
     WBSConfig,
     WBSSuccess,
@@ -32,9 +35,12 @@ __all__ = [
     "CombinedExtractor",
     # Models
     "AppMetadata",
+    "DataSource",
     "ExtendedAppMetadata",
     "ExtractionMode",
     "ExtractionResult",
+    "InAppPurchase",
+    "InAppPurchaseType",
     "WBSConfig",
     "WBSBoundaries",
     "WBSSuccess",

@@ -2,8 +2,6 @@ __version__ = "0.1.5"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
-from .combined_scraper import CombinedAppStoreScraper
-
 # Import from core module
 from .core import (  # Extractors; Models; Validation; Cache
     AppMetadata,
@@ -23,6 +21,9 @@ from .core import (  # Extractors; Models; Validation; Cache
 # Legacy imports for backward compatibility
 from .scraper import AppStoreScraper
 from .wbs_extractor import WBSMetadataExtractor
+
+# Create alias for CombinedExtractor to replace CombinedAppStoreScraper
+CombinedAppStoreScraper = CombinedExtractor
 
 __all__ = [
     # Core exports

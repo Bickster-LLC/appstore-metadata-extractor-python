@@ -859,6 +859,18 @@ class CombinedExtractor(BaseExtractor):
         if web_data.whats_new and not merged.whats_new:
             merged.whats_new = web_data.whats_new
 
+        # Merge in-app purchase list (from web scraping)
+        if hasattr(web_data, "in_app_purchase_list") and web_data.in_app_purchase_list:
+            merged.in_app_purchase_list = web_data.in_app_purchase_list
+
+        # Merge support URLs (only available from web scraping)
+        if web_data.app_support_url:
+            merged.app_support_url = web_data.app_support_url
+        if web_data.privacy_policy_url:
+            merged.privacy_policy_url = web_data.privacy_policy_url
+        if web_data.developer_website_url:
+            merged.developer_website_url = web_data.developer_website_url
+
         # Use web screenshots if more available
         if len(web_data.screenshots) > len(merged.screenshots):
             merged.screenshots = web_data.screenshots
@@ -867,3 +879,161 @@ class CombinedExtractor(BaseExtractor):
         merged.data_source = DataSource.COMBINED
 
         return merged
+
+    async def extract_with_mode(
+        self, url: str, skip_web_scraping: bool = False
+    ) -> ExtractionResult:
+        """Extract metadata with configurable mode.
+
+        Args:
+            url: App Store URL
+            skip_web_scraping: If True, only use iTunes API (faster)
+
+        Returns:
+            ExtractionResult with metadata
+        """
+        if skip_web_scraping:
+            # iTunes API only mode
+            return await self.itunes_extractor.extract(url)
+        else:
+            # Full combined mode
+            return await self.extract(url)
+
+    def fetch(self, url: str, skip_web_scraping: bool = False) -> AppMetadata:
+        """Synchronous wrapper for single URL extraction.
+
+        Args:
+            url: App Store URL
+            skip_web_scraping: If True, only use iTunes API
+
+        Returns:
+            AppMetadata object
+
+        Raises:
+            Exception: If extraction fails
+        """
+        result = asyncio.run(self.extract_with_mode(url, skip_web_scraping))
+        if not result.success or not result.metadata:
+            error_msg = f"Failed to fetch metadata: {', '.join(result.errors)}"
+            raise Exception(error_msg)
+        return result.metadata
+
+    async def fetch_batch_async(
+        self, urls: List[str], skip_web_scraping: bool = False
+    ) -> List[ExtractionResult]:
+        """Extract metadata for multiple URLs asynchronously.
+
+        Args:
+            urls: List of App Store URLs
+            skip_web_scraping: If True, only use iTunes API
+
+        Returns:
+            List of ExtractionResult objects
+        """
+        tasks = [self.extract_with_mode(url, skip_web_scraping) for url in urls]
+        return await asyncio.gather(*tasks, return_exceptions=False)
+
+    def fetch_batch(
+        self, urls: List[str], skip_web_scraping: bool = False
+    ) -> Dict[str, AppMetadata]:
+        """Synchronous wrapper for batch extraction.
+
+        Args:
+            urls: List of App Store URLs
+            skip_web_scraping: If True, only use iTunes API
+
+        Returns:
+            Dictionary mapping URL to AppMetadata (only successful extractions)
+        """
+        results = asyncio.run(self.fetch_batch_async(urls, skip_web_scraping))
+        return {
+            url: result.metadata
+            for url, result in zip(urls, results)
+            if result.success and result.metadata
+        }
+
+    async def fetch_combined(
+        self, url: str, skip_web_scraping: bool = False
+    ) -> Any:  # Returns CombinedScrapeResult but avoiding circular import
+        """Fetch app data with backward-compatible result format.
+
+        This method provides compatibility with CombinedAppStoreScraper API.
+
+        Args:
+            url: App Store URL
+            skip_web_scraping: If True, only use iTunes API
+
+        Returns:
+            CombinedScrapeResult for backward compatibility
+        """
+        from ..models_combined import AppMetadataCombined, CombinedScrapeResult
+
+        result = await self.extract_with_mode(url, skip_web_scraping)
+
+        # Convert to backward-compatible format
+        if result.success and result.metadata:
+            # Convert AppMetadata to AppMetadataCombined
+            metadata_dict = result.metadata.model_dump()
+
+            # Map fields to match AppMetadataCombined expectations
+            metadata_dict["scraped_at"] = result.metadata.extracted_at.isoformat()
+            metadata_dict["primary_category"] = metadata_dict.get("category", "Unknown")
+
+            # Ensure required fields have defaults
+            if (
+                "description" not in metadata_dict
+                or metadata_dict["description"] is None
+            ):
+                metadata_dict["description"] = ""
+
+            # Convert InAppPurchase objects to dicts with string fields
+            if (
+                "in_app_purchase_list" in metadata_dict
+                and metadata_dict["in_app_purchase_list"]
+            ):
+                iap_list = []
+                for iap in metadata_dict["in_app_purchase_list"]:
+                    iap_dict = iap if isinstance(iap, dict) else iap.model_dump()
+                    # Ensure price_value is string if present
+                    if (
+                        "price_value" in iap_dict
+                        and iap_dict["price_value"] is not None
+                    ):
+                        iap_dict["price_value"] = str(iap_dict["price_value"])
+                    # Ensure description is string
+                    if "description" not in iap_dict or iap_dict["description"] is None:
+                        iap_dict["description"] = ""
+                    iap_list.append(iap_dict)
+                metadata_dict["in_app_purchase_list"] = iap_list
+
+            app_metadata = AppMetadataCombined(**metadata_dict)
+
+            # Convert DataSource from core.models to models_combined
+            from ..models_combined import DataSource as CombinedDataSource
+
+            data_sources = []
+            if result.data_source:
+                # Map core DataSource to combined DataSource
+                data_sources = [CombinedDataSource(result.data_source.value)]
+
+            return CombinedScrapeResult(
+                success=True,
+                app_metadata=app_metadata,
+                data_sources_used=data_sources,
+                warnings=result.warnings,
+            )
+        else:
+            # Convert DataSource for error case too
+            from ..models_combined import DataSource as CombinedDataSource
+
+            data_sources = []
+            if result.data_source:
+                data_sources = [CombinedDataSource(result.data_source.value)]
+
+            return CombinedScrapeResult(
+                success=False,
+                error=result.errors[0] if result.errors else "Unknown error",
+                error_details={"errors": result.errors},
+                data_sources_used=data_sources,
+                warnings=result.warnings,
+            )
