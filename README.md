@@ -72,6 +72,13 @@ print(f"  App Support: {metadata.app_support_url}")
 print(f"  Privacy Policy: {metadata.privacy_policy_url}")
 print(f"  Developer Website: {metadata.developer_website_url}")
 
+# Access Screenshots (NEW in v0.1.10)
+print(f"\nScreenshots:")
+print(f"  iPhone: {len(metadata.screenshots)} screenshots")
+print(f"  iPad: {len(metadata.ipad_screenshots)} screenshots")
+if metadata.ipad_screenshots:
+    print(f"  First iPad screenshot: {metadata.ipad_screenshots[0]}")
+
 # Extract multiple apps
 urls = [
     "https://apps.apple.com/us/app/app1/id111111111",
@@ -216,7 +223,7 @@ The extractor provides comprehensive app metadata including:
 - **icon_url** - App icon URL (512x512)
 - **icon_urls** - Dictionary of multiple icon sizes
 - **screenshots** - List of iPhone screenshot URLs
-- **ipad_screenshots** - List of iPad screenshot URLs
+- **ipad_screenshots** - List of iPad screenshot URLs (NEW in v0.1.10 - from iTunes API and web scraping)
 
 ### Support Links (web scraping required)
 - **app_support_url** - Direct link to app support page
@@ -253,7 +260,24 @@ The extractor provides comprehensive app metadata including:
 - **extracted_at** / **scraped_at** - When data was collected
 - **raw_data** - Raw response data (optional, for debugging)
 
-## Migration Guide (v0.1.6)
+## Migration Guide
+
+### v0.1.10 - Screenshot Updates
+The iTunes API extractor now returns `ExtendedAppMetadata` instead of basic `AppMetadata`, which includes:
+- `ipad_screenshots` - Separate field for iPad screenshots
+- `developer_url` - Developer page URL from iTunes
+- `initial_release_date` - When the app was first released
+- `average_rating_current_version` and `rating_count_current_version`
+
+```python
+# The screenshots field still contains iPhone screenshots
+iphone_screenshots = metadata.screenshots  # iPhone only
+
+# NEW: iPad screenshots are now separate
+ipad_screenshots = metadata.ipad_screenshots  # iPad only (if available)
+```
+
+### v0.1.6 - CombinedExtractor Migration
 
 If you were using `CombinedAppStoreScraper`, it has been consolidated into `CombinedExtractor`. The old class name still works via an alias, but we recommend updating your code:
 

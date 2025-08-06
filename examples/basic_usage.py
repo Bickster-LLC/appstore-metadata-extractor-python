@@ -44,8 +44,10 @@ def main():
             if metadata.subtitle:
                 print(f"📝 Subtitle: {metadata.subtitle}")
 
-            # Screenshots
-            print(f"🖼️  Screenshots: {len(metadata.screenshots)}")
+            # Screenshots (Updated in v0.1.10 to include iPad)
+            print(f"🖼️  iPhone Screenshots: {len(metadata.screenshots)}")
+            if hasattr(metadata, "ipad_screenshots") and metadata.ipad_screenshots:
+                print(f"🖼️  iPad Screenshots: {len(metadata.ipad_screenshots)}")
 
             # In-App Purchases
             if metadata.in_app_purchases:
@@ -81,7 +83,10 @@ def main():
 
         print(f"📱 App Name: {metadata.name}")
         print(f"📌 Version: {metadata.current_version}")
-        print(f"🖼️  Screenshots: {len(metadata.screenshots)}")
+        print(f"🖼️  iPhone Screenshots: {len(metadata.screenshots)}")
+        print(
+            f"🖼️  iPad Screenshots: {len(metadata.ipad_screenshots) if hasattr(metadata, 'ipad_screenshots') else 'N/A'}"
+        )
         print(
             f"📝 Subtitle: {metadata.subtitle or 'Not available (web scraping skipped)'}"
         )
