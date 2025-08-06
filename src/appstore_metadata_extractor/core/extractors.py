@@ -149,7 +149,7 @@ class ITunesAPIExtractor(BaseExtractor):
         if cached_data:
             result = ExtractionResult(
                 app_id=app_id,
-                metadata=AppMetadata(**cached_data),
+                metadata=ExtendedAppMetadata(**cached_data),
                 success=True,
                 from_cache=True,
                 cache_age_seconds=self.cache.get_age(cache_key),
@@ -206,9 +206,10 @@ class ITunesAPIExtractor(BaseExtractor):
                     f"iTunes API request failed: {e}", getattr(e, "status", None)
                 )
 
-    def _parse_itunes_data(self, data: Dict[str, Any], url: str) -> AppMetadata:
-        """Parse iTunes API response into AppMetadata."""
-        return AppMetadata(
+    def _parse_itunes_data(self, data: Dict[str, Any], url: str) -> ExtendedAppMetadata:
+        """Parse iTunes API response into ExtendedAppMetadata."""
+        # Use ExtendedAppMetadata to include iPad screenshots
+        return ExtendedAppMetadata(
             app_id=str(data.get("trackId", "")),
             bundle_id=data.get("bundleId"),
             url=HttpUrl(url),
@@ -234,11 +235,25 @@ class ITunesAPIExtractor(BaseExtractor):
             rating_count=data.get("userRatingCount"),
             icon_url=HttpUrl(data.get("artworkUrl512", data.get("artworkUrl100", ""))),
             screenshots=data.get("screenshotUrls", []),
+            ipad_screenshots=data.get("ipadScreenshotUrls", []),  # Add iPad screenshots
             app_support_url=None,  # Not available from iTunes API
             privacy_policy_url=None,  # Not available from iTunes API
             developer_website_url=None,  # Not available from iTunes API
             data_source=DataSource.ITUNES_API,
             extracted_at=datetime.now(UTC),
+            # ExtendedAppMetadata specific fields
+            developer_url=data.get("artistViewUrl")
+            if data.get("artistViewUrl")
+            else None,
+            initial_release_date=self._parse_date(data.get("releaseDate")),
+            last_updated=None,  # Not available from iTunes API
+            average_rating_current_version=data.get(
+                "averageUserRatingForCurrentVersion"
+            ),
+            rating_count_current_version=data.get("userRatingCountForCurrentVersion"),
+            support_url=None,  # Not available from iTunes API
+            marketing_url=None,  # Not available from iTunes API
+            raw_data=None,  # Don't store raw data to save memory
         )
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:
@@ -336,6 +351,9 @@ class WebScraperExtractor(BaseExtractor):
             "content_rating": self._extract_age_rating(soup, json_ld_data),
             "icon_url": self._extract_icon_url(soup, json_ld_data),
             "screenshots": self._extract_screenshots(soup),
+            "ipad_screenshots": self._extract_ipad_screenshots(
+                soup
+            ),  # Add iPad screenshots
             "app_support_url": self._extract_app_support_url(soup),
             "privacy_policy_url": self._extract_privacy_policy_url(soup),
             "developer_website_url": self._extract_developer_website_url(soup),
@@ -696,7 +714,7 @@ class WebScraperExtractor(BaseExtractor):
         return HttpUrl("https://via.placeholder.com/512")
 
     def _extract_screenshots(self, soup: BeautifulSoup) -> List[HttpUrl]:
-        """Extract screenshot URLs."""
+        """Extract iPhone screenshot URLs."""
         screenshots: List[HttpUrl] = []
 
         # Method 1: Try the old structure first
@@ -711,7 +729,7 @@ class WebScraperExtractor(BaseExtractor):
 
         # Method 2: New structure with picture elements (as of 2025)
         if not screenshots:
-            # Look for sections containing "Screenshots" in the headline
+            # Look for sections containing "iPhone Screenshots" in the headline
             for section in soup.find_all("section"):
                 if not isinstance(section, Tag):
                     continue
@@ -720,9 +738,9 @@ class WebScraperExtractor(BaseExtractor):
                 if (
                     headline
                     and isinstance(headline, Tag)
-                    and "Screenshots" in headline.get_text()
+                    and "iPhone Screenshots" in headline.get_text()
                 ):
-                    # Found the screenshots section
+                    # Found the iPhone screenshots section
                     picture_elements = section.find_all(
                         "picture", class_=re.compile(r"we-artwork.*screenshot")
                     )
@@ -769,6 +787,69 @@ class WebScraperExtractor(BaseExtractor):
                             screenshots.append(HttpUrl(best_url))
 
                     break  # Found the screenshots section, no need to continue
+
+        return screenshots
+
+    def _extract_ipad_screenshots(self, soup: BeautifulSoup) -> List[HttpUrl]:
+        """Extract iPad screenshot URLs."""
+        screenshots: List[HttpUrl] = []
+
+        # Look for sections containing "iPad Screenshots" in the headline
+        for section in soup.find_all("section"):
+            if not isinstance(section, Tag):
+                continue
+
+            headline = section.find("h2", class_="section__headline")
+            if (
+                headline
+                and isinstance(headline, Tag)
+                and "iPad Screenshots" in headline.get_text()
+            ):
+                # Found the iPad screenshots section
+                picture_elements = section.find_all(
+                    "picture", class_=re.compile(r"we-artwork.*screenshot")
+                )
+
+                for picture in picture_elements:
+                    if not isinstance(picture, Tag):
+                        continue
+
+                    # Get the highest quality PNG URL from source elements
+                    sources = picture.find_all("source")
+                    best_url = None
+
+                    for source in sources:
+                        if not isinstance(source, Tag):
+                            continue
+
+                        # Prefer PNG over WebP
+                        if source.get("type") == "image/png":
+                            srcset = source.get("srcset", "")
+                            if isinstance(srcset, str):
+                                # Extract URLs from srcset
+                                urls = re.findall(r"(https://[^\s,]+\.png)", srcset)
+                                if urls:
+                                    # Get the highest resolution URL (usually last in srcset)
+                                    best_url = urls[-1]
+                                    break
+
+                    # Fallback to WebP if no PNG found
+                    if not best_url:
+                        for source in sources:
+                            if not isinstance(source, Tag):
+                                continue
+
+                            srcset = source.get("srcset", "")
+                            if isinstance(srcset, str):
+                                urls = re.findall(r"(https://[^\s,]+\.webp)", srcset)
+                                if urls:
+                                    best_url = urls[-1]
+                                    break
+
+                    if best_url:
+                        screenshots.append(HttpUrl(best_url))
+
+                break  # Found the iPad screenshots section, no need to continue
 
         return screenshots
 
