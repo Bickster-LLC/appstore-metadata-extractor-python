@@ -242,9 +242,9 @@ class ITunesAPIExtractor(BaseExtractor):
             data_source=DataSource.ITUNES_API,
             extracted_at=datetime.now(UTC),
             # ExtendedAppMetadata specific fields
-            developer_url=data.get("artistViewUrl")
-            if data.get("artistViewUrl")
-            else None,
+            developer_url=(
+                data.get("artistViewUrl") if data.get("artistViewUrl") else None
+            ),
             initial_release_date=self._parse_date(data.get("releaseDate")),
             last_updated=None,  # Not available from iTunes API
             average_rating_current_version=data.get(
