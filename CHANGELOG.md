@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2025-08-06
+
+### Added
+- **Platform-specific screenshot extraction**: Web scraper now fetches screenshots using `?platform=iphone` and `?platform=ipad` URL parameters
+  - Ensures both iPhone and iPad screenshots are captured for apps that support both devices
+  - Automatically makes additional requests to platform-specific URLs
+  - Works with apps like XIVI that have both device types in a generic "Screenshots" section
+
+### Fixed
+- iPad screenshots not being extracted for apps with generic "Screenshots" sections
+- CombinedExtractor now properly merges iPad screenshots from web scraping results
+- Screenshot extraction logic simplified to work with platform-specific pages
+
+### Changed
+- Renamed test file from `test_generic_screenshots_section.py` to `test_platform_specific_screenshots.py` to better reflect functionality
+
 ## [0.1.11] - 2025-08-06
 
 ### Fixed
