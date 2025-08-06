@@ -353,22 +353,17 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Development
 
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup and workflow instructions.
+
+**Quick Start:**
 ```bash
-# Clone the repository
+# Clone and setup
 git clone https://github.com/yourusername/appstore-metadata-extractor-python.git
 cd appstore-metadata-extractor-python
+./dev-setup.sh
 
-# Install in development mode
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Run linting
-black src tests
-isort src tests
-flake8 src tests
-mypy src
+# Activate environment and develop
+source venv/bin/activate
 ```
 
 ## License
