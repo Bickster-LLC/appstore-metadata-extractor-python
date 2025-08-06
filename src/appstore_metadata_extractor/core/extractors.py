@@ -729,64 +729,68 @@ class WebScraperExtractor(BaseExtractor):
 
         # Method 2: New structure with picture elements (as of 2025)
         if not screenshots:
-            # Look for sections containing "iPhone Screenshots" in the headline
+            # Look for sections containing "iPhone Screenshots" or just "Screenshots" in the headline
             for section in soup.find_all("section"):
                 if not isinstance(section, Tag):
                     continue
 
                 headline = section.find("h2", class_="section__headline")
-                if (
-                    headline
-                    and isinstance(headline, Tag)
-                    and "iPhone Screenshots" in headline.get_text()
-                ):
-                    # Found the iPhone screenshots section
-                    picture_elements = section.find_all(
-                        "picture", class_=re.compile(r"we-artwork.*screenshot")
-                    )
+                if headline and isinstance(headline, Tag):
+                    headline_text = headline.get_text()
+                    # Check for "iPhone Screenshots" or generic "Screenshots" (but not "iPad Screenshots")
+                    if "iPhone Screenshots" in headline_text or (
+                        headline_text.strip() == "Screenshots"
+                        and "iPad" not in headline_text
+                    ):
+                        # Found the iPhone screenshots section
+                        picture_elements = section.find_all(
+                            "picture", class_=re.compile(r"we-artwork.*screenshot")
+                        )
 
-                    for picture in picture_elements:
-                        if not isinstance(picture, Tag):
-                            continue
-
-                        # Get the highest quality PNG URL from source elements
-                        sources = picture.find_all("source")
-                        best_url = None
-
-                        for source in sources:
-                            if not isinstance(source, Tag):
+                        for picture in picture_elements:
+                            if not isinstance(picture, Tag):
                                 continue
 
-                            # Prefer PNG over WebP
-                            if source.get("type") == "image/png":
-                                srcset = source.get("srcset", "")
-                                if isinstance(srcset, str):
-                                    # Extract URLs from srcset - handle space before size descriptor
-                                    urls = re.findall(r"(https://[^\s,]+\.png)", srcset)
-                                    if urls:
-                                        # Get the highest resolution URL (usually last in srcset)
-                                        best_url = urls[-1]
-                                        break
+                            # Get the highest quality PNG URL from source elements
+                            sources = picture.find_all("source")
+                            best_url = None
 
-                        # Fallback to WebP if no PNG found
-                        if not best_url:
                             for source in sources:
                                 if not isinstance(source, Tag):
                                     continue
 
-                                srcset = source.get("srcset", "")
-                                if isinstance(srcset, str):
-                                    urls = re.findall(
-                                        r"(https://[^\s,]+\.webp)", srcset
-                                    )
-                                    if urls:
-                                        best_url = urls[-1]
-                                        break
+                                # Prefer PNG over WebP
+                                if source.get("type") == "image/png":
+                                    srcset = source.get("srcset", "")
+                                    if isinstance(srcset, str):
+                                        # Extract URLs from srcset - handle space before size descriptor
+                                        urls = re.findall(
+                                            r"(https://[^\s,]+\.png)", srcset
+                                        )
+                                        if urls:
+                                            # Get the highest resolution URL (usually last in srcset)
+                                            best_url = urls[-1]
+                                            break
 
-                        if best_url:
-                            screenshots.append(HttpUrl(best_url))
+                            # Fallback to WebP if no PNG found
+                            if not best_url:
+                                for source in sources:
+                                    if not isinstance(source, Tag):
+                                        continue
 
-                    break  # Found the screenshots section, no need to continue
+                                    srcset = source.get("srcset", "")
+                                    if isinstance(srcset, str):
+                                        urls = re.findall(
+                                            r"(https://[^\s,]+\.webp)", srcset
+                                        )
+                                        if urls:
+                                            best_url = urls[-1]
+                                            break
+
+                            if best_url:
+                                screenshots.append(HttpUrl(best_url))
+
+                        break  # Found the screenshots section, no need to continue
 
         return screenshots
 
