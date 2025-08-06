@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2025-08-05
+
+### Added
+- **Developer Experience Improvements**:
+  - `dev-setup.sh` - One-command development environment setup
+  - `DEVELOPMENT.md` - Comprehensive development guide explaining Python packaging best practices
+  - `Makefile` - Common development tasks (test, lint, format, clean, etc.)
+  - `examples/basic_usage.py` - Working example demonstrating package usage
+- **Documentation**:
+  - Detailed explanation of why we install our own package during development
+  - Troubleshooting guide for common issues
+  - Clear workflow instructions for contributors
+
+### Improved
+- **Field Documentation**: README now documents all 50+ available fields with descriptions
+- **Development Setup**: Clear instructions for virtual environments and editable installs
+
 ## [0.1.8] - 2025-08-05
 
 ### Fixed
