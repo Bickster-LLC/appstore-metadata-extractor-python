@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2025-08-05
+
+### Added
+- **Screenshot Validation Tests**:
+  - Comprehensive test suite for iPhone and iPad screenshot validation
+  - ScreenshotValidator class to check image dimensions
+  - Downloads and verifies actual image resolutions match device types
+  - Tests for apps with both device types, iPhone-only apps, and batch validation
+  - Pillow dependency added to dev requirements for image processing
+
+### Improved
+- **Screenshot Extraction**:
+  - iTunes API now extracts both iPhone and iPad screenshots separately (`ipad_screenshots` field)
+  - Web scraper can differentiate between "iPhone Screenshots" and "iPad Screenshots" sections
+  - Device categorization based on image dimensions and aspect ratios
+
+### Fixed
+- ExtendedAppMetadata initialization now includes all required fields from iTunes API
+- Added missing fields: developer_url, initial_release_date, rating counts for current version
+
 ## [0.1.9] - 2025-08-05
 
 ### Added
