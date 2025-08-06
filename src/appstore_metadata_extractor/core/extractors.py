@@ -698,6 +698,8 @@ class WebScraperExtractor(BaseExtractor):
     def _extract_screenshots(self, soup: BeautifulSoup) -> List[HttpUrl]:
         """Extract screenshot URLs."""
         screenshots: List[HttpUrl] = []
+
+        # Method 1: Try the old structure first
         gallery = soup.find("section", class_="section--screenshots")
         if isinstance(gallery, Tag):
             images = gallery.find_all("img")
@@ -706,6 +708,68 @@ class WebScraperExtractor(BaseExtractor):
                     src = img.get("src")
                     if src:
                         screenshots.append(HttpUrl(str(src)))
+
+        # Method 2: New structure with picture elements (as of 2025)
+        if not screenshots:
+            # Look for sections containing "Screenshots" in the headline
+            for section in soup.find_all("section"):
+                if not isinstance(section, Tag):
+                    continue
+
+                headline = section.find("h2", class_="section__headline")
+                if (
+                    headline
+                    and isinstance(headline, Tag)
+                    and "Screenshots" in headline.get_text()
+                ):
+                    # Found the screenshots section
+                    picture_elements = section.find_all(
+                        "picture", class_=re.compile(r"we-artwork.*screenshot")
+                    )
+
+                    for picture in picture_elements:
+                        if not isinstance(picture, Tag):
+                            continue
+
+                        # Get the highest quality PNG URL from source elements
+                        sources = picture.find_all("source")
+                        best_url = None
+
+                        for source in sources:
+                            if not isinstance(source, Tag):
+                                continue
+
+                            # Prefer PNG over WebP
+                            if source.get("type") == "image/png":
+                                srcset = source.get("srcset", "")
+                                if isinstance(srcset, str):
+                                    # Extract URLs from srcset - handle space before size descriptor
+                                    urls = re.findall(r"(https://[^\s,]+\.png)", srcset)
+                                    if urls:
+                                        # Get the highest resolution URL (usually last in srcset)
+                                        best_url = urls[-1]
+                                        break
+
+                        # Fallback to WebP if no PNG found
+                        if not best_url:
+                            for source in sources:
+                                if not isinstance(source, Tag):
+                                    continue
+
+                                srcset = source.get("srcset", "")
+                                if isinstance(srcset, str):
+                                    urls = re.findall(
+                                        r"(https://[^\s,]+\.webp)", srcset
+                                    )
+                                    if urls:
+                                        best_url = urls[-1]
+                                        break
+
+                        if best_url:
+                            screenshots.append(HttpUrl(best_url))
+
+                    break  # Found the screenshots section, no need to continue
+
         return screenshots
 
     def _extract_languages(self, soup: BeautifulSoup) -> List[str]:

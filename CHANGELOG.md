@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Critical**: Publish workflow now requires all tests to pass before releasing to PyPI
   - Prevents broken releases from being published
   - Tests run on Python 3.11, 3.12, and 3.13
+- **Screenshot extraction** now works for apps without iTunes API screenshots
+  - Updated web scraper to handle new HTML structure with `<picture>` elements
+  - Extracts highest quality PNG URLs from srcset attributes
+  - Falls back to WebP if PNG not available
 
 ### Added
 - Added `types-beautifulsoup4` to development dependencies for consistent type checking
