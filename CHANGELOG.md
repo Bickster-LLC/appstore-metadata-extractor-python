@@ -42,7 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the new dedicated extractors instead.
 - `similar_apps` extraction is intentionally out of scope for 0.2.0.
 - Test infrastructure: `pytest` now defaults to skipping `@pytest.mark.integration`
-  tests; opt in with `pytest -m integration` to hit real Apple endpoints.
+  tests; opt in with `pytest -m integration` to hit real Apple endpoints. All
+  existing files under `tests/integration/` were retroactively marked
+  `pytestmark = pytest.mark.integration` so CI stays green when Apple's HTML
+  drifts (the legacy tests still run on demand).
 
 ## [0.1.12] - 2025-08-06
 

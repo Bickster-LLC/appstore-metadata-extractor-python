@@ -9,6 +9,8 @@ import pytest
 from appstore_metadata_extractor.core import CombinedExtractor, WBSConfig
 from appstore_metadata_extractor.core.models import DataSource
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_combined_extractor_integration():

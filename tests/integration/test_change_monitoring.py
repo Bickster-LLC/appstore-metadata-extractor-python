@@ -10,6 +10,8 @@ import pytest
 from appstore_metadata_extractor.change_monitor import WBSChangeMonitor
 from appstore_metadata_extractor.wbs_extractor import WBSConfig
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.skip(reason="This is a demonstration script, not a test")
 async def test_demonstrate_monitoring():

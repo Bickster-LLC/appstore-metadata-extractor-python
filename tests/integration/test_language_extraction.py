@@ -6,6 +6,8 @@ import pytest
 
 from appstore_metadata_extractor.core import CombinedExtractor, WBSConfig
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_chatgpt_language_extraction():
