@@ -155,6 +155,96 @@ async def main():
 asyncio.run(main())
 ```
 
+### Standalone Review Mining (v0.2.0)
+
+```python
+import asyncio
+from appstore_metadata_extractor import AppStoreReviewExtractor
+
+async def mine_reviews():
+    extractor = AppStoreReviewExtractor()
+    try:
+        # Single app — up to 10 pages ≈ 500 reviews.
+        batch = await extractor.fetch_reviews(
+            app_id="310633997",       # WhatsApp Messenger
+            country="us",
+            sort="mostrecent",        # or "mosthelpful"
+            max_pages=10,
+        )
+        print(f"Got {batch.total_reviews} reviews across {batch.pages_fetched} page(s)")
+        for review in batch.reviews[:3]:
+            print(f"  {review.rating}★ — {review.author}: {review.title}")
+
+        # Batch — many apps at once, with a concurrency cap.
+        batches = await extractor.fetch_reviews_batch(
+            app_ids=["310633997", "284882215", "454638411"],
+            country="us",
+            max_pages=3,
+            max_concurrent=3,
+        )
+        for app_id, b in batches.items():
+            print(f"{app_id}: {b.total_reviews} reviews")
+    finally:
+        await extractor.close()
+
+asyncio.run(mine_reviews())
+```
+
+### Standalone Chart Rankings (v0.2.0)
+
+```python
+import asyncio
+from appstore_metadata_extractor import AppStoreRankingFetcher
+
+async def check_rankings():
+    fetcher = AppStoreRankingFetcher()
+    try:
+        # Fetch a full chart snapshot.
+        snapshot = await fetcher.fetch_chart(
+            chart="top-free",         # "top-free" | "top-paid" | "top-grossing"
+            country="us",
+            limit=100,
+        )
+        print(f"Top 3 free apps:")
+        for entry in snapshot.entries[:3]:
+            print(f"  #{entry.rank} — {entry.name} ({entry.developer_name})")
+
+        # Or just look up one app's rank.
+        rank = await fetcher.find_app_rank(
+            app_id="310633997", chart="top-free", country="us", limit=100
+        )
+        print(f"WhatsApp rank: {rank if rank else 'not in top 100'}")
+    finally:
+        await fetcher.close()
+
+asyncio.run(check_rankings())
+```
+
+### Standalone Search (v0.2.0)
+
+```python
+import asyncio
+from appstore_metadata_extractor import AppStoreSearcher
+
+async def search_competitors():
+    searcher = AppStoreSearcher()
+    try:
+        # Keyword search.
+        results = await searcher.search("habit tracker", country="us", limit=25)
+        print(f"Found {results.total_count} matches; top {len(results.hits)} returned:")
+        for hit in results.hits[:5]:
+            print(f"  {hit.name} — {hit.developer_name} ({hit.formatted_price})")
+
+        # Genre-only browse (6017 = Lifestyle).
+        top_lifestyle = await searcher.search_by_genre(6017, country="us", limit=10)
+        for hit in top_lifestyle.hits:
+            print(f"  {hit.primary_category}: {hit.name}")
+    finally:
+        await searcher.close()
+
+asyncio.run(search_competitors())
+```
+
 ## CLI Commands
 
 ### `extract` - Extract single app metadata
@@ -344,6 +434,77 @@ The extractor provides comprehensive app metadata including:
 - **data_source** - Source of the data (itunes_api, web_scrape, combined)
 - **extracted_at** / **scraped_at** - When data was collected
 - **raw_data** - Raw response data (optional, for debugging)
+
+## v0.2.0 Models — Search, Reviews, Rankings
+
+The new extractors return their own typed Pydantic models, separate from
+`AppMetadata` / `ExtendedAppMetadata`.
+
+### `SearchHit` (from `AppStoreSearcher.search` / `search_by_genre`)
+Per-result fields populated from the iTunes Search API.
+- **app_id** — Apple track ID (string)
+- **bundle_id** — App bundle identifier (optional)
+- **name** — App name (`trackName`)
+- **developer_name** — Developer / artist name
+- **developer_id** — Artist ID (optional)
+- **url** — `apps.apple.com` URL (`trackViewUrl`)
+- **icon_url** — Best available artwork URL (512 → 100 → 60 fallback)
+- **average_rating** — `averageUserRating` (optional)
+- **rating_count** — `userRatingCount` (optional)
+- **price** — Numeric price in the storefront currency
+- **formatted_price** — Price as a display string (e.g. `"Free"`, `"$4.99"`)
+- **primary_category** — `primaryGenreName`
+- **primary_category_id** — `primaryGenreId`
+- **description** — Full description (iTunes Search returns this inline)
+- **country** — Storefront the result came from
+
+### `SearchResults` (wrapper for a single query)
+- **query** — The original search term (or `"genre:<id>"` for genre-only searches)
+- **country** — Storefront code
+- **total_count** — `resultCount` from the API (may exceed `len(hits)` if the
+  API truncated)
+- **hits** — List of `SearchHit`
+- **fetched_at** — UTC timestamp the query was issued
+
+### `Review` (one user review, reused from `models_combined.Review`)
+- **author** — Reviewer's screen name
+- **rating** — Star rating, 1–5 (validated)
+- **title** — Review title (optional)
+- **content** — Review body
+- **date** — `datetime` parsed from the RSS `updated` field
+- **version** — App version the review was written against (optional)
+- **helpful_count** — `im:voteSum` count (coerced to int; 0 if missing)
+
+### `ReviewBatch` (from `AppStoreReviewExtractor.fetch_reviews`)
+- **app_id** — The target app ID
+- **country** — Storefront code
+- **sort** — `"mostrecent"` or `"mosthelpful"`
+- **pages_fetched** — How many pages were actually fetched (≤ requested `max_pages`)
+- **total_reviews** — `len(reviews)` after dedup
+- **reviews** — List of `Review`
+- **fetched_at** — UTC timestamp
+- **has_more** — `True` if we stopped at the requested cap rather than end-of-data
+- **notes** — Diagnostic strings (e.g. `"page 5: 404 — end of data"`)
+
+### `RankingEntry` (one entry in a chart, 1-indexed)
+- **rank** — Position in the chart, starting at 1
+- **app_id** — Apple track ID
+- **name** — App name
+- **developer_name** — Developer / artist name
+- **genre_ids** — List of genre IDs (often empty for the overall chart)
+- **artwork_url** — Icon URL (`artworkUrl100`, optional)
+- **url** — `apps.apple.com` URL if Apple includes it
+
+### `ChartSnapshot` (from `AppStoreRankingFetcher.fetch_chart`)
+- **chart** — `"top-free"`, `"top-paid"`, or `"top-grossing"`
+- **country** — Storefront code
+- **genre_id** — `None` for the overall chart, otherwise the genre filter applied
+- **fetched_at** — UTC timestamp — stitch these together to build history
+- **entries** — Ordered list of `RankingEntry`
+
+> Snapshots are point-in-time only. The package returns the chart as it is
+> *right now*; storing daily snapshots for trend history is the consumer's
+> responsibility.
 
 ## Migration Guide
 
