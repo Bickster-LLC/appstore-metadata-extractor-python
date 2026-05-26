@@ -9,6 +9,10 @@ Extract and monitor metadata from Apple App Store applications with ease.
 ## Features
 
 - 📱 **Extract comprehensive app metadata** - title, description, version, ratings, and more
+- 🔎 **Keyword & genre search** (v0.2.0) - find apps via iTunes Search API
+- 📝 **Review mining** (v0.2.0) - paginated reviews via Apple's RSS feed (~500 per app)
+- 📊 **Chart rankings** (v0.2.0) - current top-free/top-paid/top-grossing snapshots
+- 🌍 **Storefront support** (v0.2.0) - first-class `country` parameter on every extractor
 - 💰 **In-App Purchase details** - extract names and prices of all IAP items
 - 🔗 **Support links** - app support, privacy policy, and developer website URLs
 - 🔄 **Track version changes** - monitor app updates and metadata changes over time
@@ -23,6 +27,51 @@ Extract and monitor metadata from Apple App Store applications with ease.
 ```bash
 pip install apple-appstore-metadata-extractor
 ```
+
+## What's New in v0.2.0
+
+v0.2.0 closes three gaps that previously required a third-party service:
+
+- **Search** — `AppStoreSearcher` / `appstore-extractor search`
+- **Reviews** — `AppStoreReviewExtractor` / `appstore-extractor reviews`
+- **Rankings** — `AppStoreRankingFetcher` / `appstore-extractor chart` & `rank`
+- **`CompositeAppStoreClient`** — one client bundling all four extractors with
+  a shared rate limiter (default 20 req/min, the iTunes per-IP cap).
+- **Country parameter** on every existing extractor (defaults to `"us"`).
+
+Recommended entry point:
+
+```python
+import asyncio
+from appstore_metadata_extractor import CompositeAppStoreClient
+
+async def discover():
+    async with CompositeAppStoreClient(country="us") as client:
+        # 1. Find candidate apps.
+        hits = await client.search.search("habit tracker", limit=20)
+
+        for hit in hits.hits[:3]:
+            # 2. Pull full metadata (existing CombinedExtractor).
+            meta = client.metadata.fetch(hit.url)
+
+            # 3. Mine reviews (up to 10 pages ≈ 500 reviews).
+            reviews = await client.reviews.fetch_reviews(
+                hit.app_id, max_pages=5
+            )
+
+            # 4. Look up current chart rank.
+            rank = await client.rankings.find_app_rank(
+                hit.app_id, chart="top-free"
+            )
+
+            print(f"{hit.name}: rank={rank}, reviews={reviews.total_reviews}")
+
+asyncio.run(discover())
+```
+
+The four sub-extractors (`AppStoreSearcher`, `AppStoreReviewExtractor`,
+`AppStoreRankingFetcher`, `CombinedExtractor`) are also importable
+individually if you need finer control.
 
 ## Quick Start
 
@@ -141,6 +190,42 @@ Options:
   --interval INTEGER       Check interval in seconds (default: 3600)
   --output-dir PATH       Directory for history files
   --notify               Enable notifications for changes
+```
+
+### `search` - Find apps via the iTunes Search API (v0.2.0)
+
+```bash
+appstore-extractor search "habit tracker" --limit 25
+appstore-extractor search --genre-id 6017 --limit 20  # Lifestyle category
+
+Options:
+  --country TEXT          Storefront code (default: us)
+  --limit INTEGER         Max results (1–200, default: 50)
+  --genre-id INTEGER      Optional category filter
+  -o, --output PATH       Write JSON to file instead of stdout
+```
+
+### `reviews` / `reviews-batch` - Mine app reviews (v0.2.0)
+
+```bash
+appstore-extractor reviews 310633997 --max-pages 5
+appstore-extractor reviews-batch ids.txt --max-pages 5 --concurrent 3
+
+Options (reviews):
+  --country TEXT                          Storefront code (default: us)
+  --max-pages INTEGER                     1–10 (Apple's cap, default: 10)
+  --sort [mostrecent|mosthelpful]        Sort order (default: mostrecent)
+  -o, --output PATH                       Write JSON to file
+
+reviews-batch reads one app ID per line from IDS_FILE.
+```
+
+### `chart` / `rank` - Chart snapshot and per-app rank (v0.2.0)
+
+```bash
+appstore-extractor chart top-free --limit 50
+appstore-extractor chart top-paid --country us --genre-id 6017 --limit 25
+appstore-extractor rank 310633997 --chart top-free --country us
 ```
 
 ## Input File Format

@@ -52,23 +52,27 @@ class BaseExtractor(ABC):
         }
 
     @abstractmethod
-    async def extract(self, url: str) -> ExtractionResult:
+    async def extract(self, url: str, country: str = "us") -> ExtractionResult:
         """
         Extract metadata from App Store URL.
 
         Args:
             url: App Store URL
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             ExtractionResult with metadata and WBS compliance status
         """
 
-    async def extract_with_validation(self, url: str) -> ExtractionResult:
+    async def extract_with_validation(
+        self, url: str, country: str = "us"
+    ) -> ExtractionResult:
         """
         Extract metadata and validate against WBS constraints.
 
         Args:
             url: App Store URL
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             WBS-validated extraction result
@@ -83,7 +87,7 @@ class BaseExtractor(ABC):
             self.validator.enforce_boundaries()
 
             # Perform extraction
-            result = await self.extract(url)
+            result = await self.extract(url, country=country)
 
             # Calculate duration
             duration = (datetime.now(UTC) - start_time).total_seconds()
@@ -137,14 +141,19 @@ class ITunesAPIExtractor(BaseExtractor):
     @retry(
         stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10)
     )
-    async def extract(self, url: str) -> ExtractionResult:
-        """Extract metadata using iTunes API."""
+    async def extract(self, url: str, country: str = "us") -> ExtractionResult:
+        """Extract metadata using iTunes API.
+
+        Args:
+            url: App Store URL
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
+        """
         app_id = self._extract_app_id(url)
         if not app_id:
             raise ValidationError("url", url, "valid App Store URL with app ID")
 
         # Check cache first
-        cache_key = f"itunes:{app_id}"
+        cache_key = f"itunes:{country}:{app_id}"
         cached_data = self.cache.get(cache_key)
         if cached_data:
             result = ExtractionResult(
@@ -161,7 +170,7 @@ class ITunesAPIExtractor(BaseExtractor):
         self.rate_limiter.consume("itunes_api")
 
         async with await self._create_session() as session:
-            params = {"id": app_id, "country": "us", "entity": "software"}
+            params = {"id": app_id, "country": country, "entity": "software"}
 
             try:
                 async with session.get(self.base_url, params=params) as response:
@@ -269,17 +278,45 @@ class ITunesAPIExtractor(BaseExtractor):
 class WebScraperExtractor(BaseExtractor):
     """Extractor using web scraping."""
 
+    # Match `apps.apple.com/<cc>/app/...` where <cc> is a 2-letter storefront.
+    _STOREFRONT_PATTERN = re.compile(
+        r"(apps\.apple\.com)/([a-z]{2})/app/", re.IGNORECASE
+    )
+
     def __init__(self, wbs_config: WBSConfig, timeout: int = 30):
         super().__init__(wbs_config, timeout)
+
+    @classmethod
+    def _apply_country_to_url(cls, url: str, country: str) -> str:
+        """Rewrite the storefront segment of an App Store URL.
+
+        ``https://apps.apple.com/us/app/foo/id123`` with ``country="gb"``
+        becomes ``https://apps.apple.com/gb/app/foo/id123``. URLs without a
+        storefront segment are returned unchanged.
+        """
+        country = (country or "us").lower()
+        return cls._STOREFRONT_PATTERN.sub(
+            lambda m: f"{m.group(1)}/{country}/app/", str(url)
+        )
 
     @retry(
         stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10)
     )
-    async def extract(self, url: str) -> ExtractionResult:
-        """Extract metadata using web scraping."""
+    async def extract(self, url: str, country: str = "us") -> ExtractionResult:
+        """Extract metadata using web scraping.
+
+        Args:
+            url: App Store URL
+            country: ISO 3166-1 alpha-2 storefront code (default: "us"). When
+                supplied, the storefront segment of the URL (e.g. ``/us/app/``)
+                is rewritten to match.
+        """
         app_id = self._extract_app_id(url)
         if not app_id:
             raise ValidationError("url", url, "valid App Store URL with app ID")
+
+        # Rewrite the storefront in the URL if a non-default country was passed.
+        url = self._apply_country_to_url(url, country)
 
         # Add delay for web scraping
         await asyncio.sleep(self.wbs_config.boundaries.web_scrape_delay)
@@ -1121,22 +1158,27 @@ class CombinedExtractor(BaseExtractor):
         self.itunes_extractor = ITunesAPIExtractor(wbs_config, timeout)
         self.web_extractor = WebScraperExtractor(wbs_config, timeout)
 
-    async def extract(self, url: str) -> ExtractionResult:
-        """Extract metadata using both sources and merge results."""
+    async def extract(self, url: str, country: str = "us") -> ExtractionResult:
+        """Extract metadata using both sources and merge results.
+
+        Args:
+            url: App Store URL
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
+        """
         app_id = self._extract_app_id(url)
         if not app_id:
             raise ValidationError("url", url, "valid App Store URL with app ID")
 
         # Try iTunes API first (faster and more reliable)
         try:
-            itunes_result = await self.itunes_extractor.extract(url)
+            itunes_result = await self.itunes_extractor.extract(url, country=country)
         except Exception:
             itunes_result = None
 
         # Always try web scraping to get complete data (IAPs, languages, etc.)
         # Note: Removed the early return logic that skipped web scraping
         try:
-            web_result = await self.web_extractor.extract(url)
+            web_result = await self.web_extractor.extract(url, country=country)
         except Exception:
             web_result = None
 
@@ -1266,7 +1308,7 @@ class CombinedExtractor(BaseExtractor):
         return merged
 
     async def extract_with_mode(
-        self, url: str, skip_web_scraping: bool = False
+        self, url: str, skip_web_scraping: bool = False, country: str = "us"
     ) -> ExtractionResult:
         """Extract metadata with configurable mode.
 
@@ -1274,24 +1316,28 @@ class CombinedExtractor(BaseExtractor):
             url: App Store URL
             skip_web_scraping: If True, only use iTunes API (faster but less data)
                              If False (default), use both iTunes API and web scraping
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             ExtractionResult with metadata
         """
         if skip_web_scraping:
             # iTunes API only mode - fast but limited data
-            return await self.itunes_extractor.extract(url)
+            return await self.itunes_extractor.extract(url, country=country)
         else:
             # Full combined mode - includes IAPs, languages, support URLs, etc.
-            return await self.extract(url)
+            return await self.extract(url, country=country)
 
-    def fetch(self, url: str, skip_web_scraping: bool = False) -> AppMetadata:
+    def fetch(
+        self, url: str, skip_web_scraping: bool = False, country: str = "us"
+    ) -> AppMetadata:
         """Synchronous wrapper for single URL extraction.
 
         Args:
             url: App Store URL
             skip_web_scraping: If True, only use iTunes API (faster but no IAPs/languages).
                              If False (default), use both iTunes API and web scraping.
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             AppMetadata object with complete data including IAPs and languages
@@ -1299,29 +1345,32 @@ class CombinedExtractor(BaseExtractor):
         Raises:
             Exception: If extraction fails
         """
-        result = asyncio.run(self.extract_with_mode(url, skip_web_scraping))
+        result = asyncio.run(self.extract_with_mode(url, skip_web_scraping, country))
         if not result.success or not result.metadata:
             error_msg = f"Failed to fetch metadata: {', '.join(result.errors)}"
             raise Exception(error_msg)
         return result.metadata
 
     async def fetch_batch_async(
-        self, urls: List[str], skip_web_scraping: bool = False
+        self, urls: List[str], skip_web_scraping: bool = False, country: str = "us"
     ) -> List[ExtractionResult]:
         """Extract metadata for multiple URLs asynchronously.
 
         Args:
             urls: List of App Store URLs
             skip_web_scraping: If True, only use iTunes API
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             List of ExtractionResult objects
         """
-        tasks = [self.extract_with_mode(url, skip_web_scraping) for url in urls]
+        tasks = [
+            self.extract_with_mode(url, skip_web_scraping, country) for url in urls
+        ]
         return await asyncio.gather(*tasks, return_exceptions=False)
 
     def fetch_batch(
-        self, urls: List[str], skip_web_scraping: bool = False
+        self, urls: List[str], skip_web_scraping: bool = False, country: str = "us"
     ) -> Dict[str, AppMetadata]:
         """Synchronous wrapper for batch extraction.
 
@@ -1329,11 +1378,12 @@ class CombinedExtractor(BaseExtractor):
             urls: List of App Store URLs
             skip_web_scraping: If True, only use iTunes API (faster but no IAPs/languages).
                              If False (default), use both iTunes API and web scraping.
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             Dictionary mapping URL to AppMetadata (only successful extractions)
         """
-        results = asyncio.run(self.fetch_batch_async(urls, skip_web_scraping))
+        results = asyncio.run(self.fetch_batch_async(urls, skip_web_scraping, country))
         return {
             url: result.metadata
             for url, result in zip(urls, results)
@@ -1341,7 +1391,7 @@ class CombinedExtractor(BaseExtractor):
         }
 
     async def fetch_combined(
-        self, url: str, skip_web_scraping: bool = False
+        self, url: str, skip_web_scraping: bool = False, country: str = "us"
     ) -> Any:  # Returns CombinedScrapeResult but avoiding circular import
         """Fetch app data with backward-compatible result format.
 
@@ -1350,13 +1400,14 @@ class CombinedExtractor(BaseExtractor):
         Args:
             url: App Store URL
             skip_web_scraping: If True, only use iTunes API
+            country: ISO 3166-1 alpha-2 storefront code (default: "us")
 
         Returns:
             CombinedScrapeResult for backward compatibility
         """
         from ..models_combined import AppMetadataCombined, CombinedScrapeResult
 
-        result = await self.extract_with_mode(url, skip_web_scraping)
+        result = await self.extract_with_mode(url, skip_web_scraping, country)
 
         # Convert to backward-compatible format
         if result.success and result.metadata:

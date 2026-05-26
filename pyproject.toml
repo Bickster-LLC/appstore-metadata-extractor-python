@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apple-appstore-metadata-extractor"
-version = "0.1.12"
+version = "0.2.0"
 description = "Extract and monitor metadata from Apple App Store applications"
 readme = "README.md"
 authors = [
@@ -124,11 +124,14 @@ strict_equality = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=appstore_metadata_extractor --cov-report=term-missing"
+addopts = "-ra -q --strict-markers --cov=appstore_metadata_extractor --cov-report=term-missing -m 'not integration'"
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+markers = [
+    "integration: hits real Apple endpoints; opt-in with `pytest -m integration`",
+]
 
 [tool.coverage.run]
 source = ["src"]

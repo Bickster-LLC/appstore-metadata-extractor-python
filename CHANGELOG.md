@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-25
+
+### Added
+- **Search / Discovery** (`AppStoreSearcher`, CLI `search`): Find apps by
+  keyword or genre via the iTunes Search API. Returns `SearchResults` with
+  typed `SearchHit` entries. Supports country/storefront, limit (≤200), and
+  optional `genre_id` filtering. Cache TTL: 1 hour.
+- **Review Extraction** (`AppStoreReviewExtractor`, CLI `reviews` /
+  `reviews-batch`): Paginated reviews via the Apple RSS customer-reviews feed,
+  up to Apple's 10-page (~500 review) cap. Returns `ReviewBatch` (timestamped,
+  with diagnostic notes) containing the existing `Review` model populated for
+  the first time. Dedup by review id; stops cleanly on 404 or empty pages.
+  Batch mode uses `asyncio.Semaphore` to cap concurrency. Cache TTL: 24 hours.
+- **Rankings Snapshot** (`AppStoreRankingFetcher`, CLI `chart` / `rank`):
+  Current chart positions via Apple Marketing Tools RSS
+  (`rss.marketingtools.apple.com`). Returns `ChartSnapshot` with rank-ordered
+  `RankingEntry` items. Includes `find_app_rank()` convenience to look up one
+  app's position. Snapshot only — historical tracking is the consumer's job.
+  Cache TTL: 1 hour.
+- **Country parameter on existing extractors**:
+  `ITunesAPIExtractor.extract`, `WebScraperExtractor.extract`, and
+  `CombinedExtractor.extract` (plus `extract_with_mode`, `fetch`,
+  `fetch_batch`, `fetch_combined`) now accept a `country` argument (default
+  `"us"`). The web scraper rewrites the `/<cc>/app/` URL segment to match.
+- **`CompositeAppStoreClient`**: Convenience wrapper bundling search,
+  metadata, reviews, and rankings, sharing a single `RateLimiter` (default
+  20 req/min, the iTunes per-IP cap) and `CacheManager` across all four
+  extractors. Supports `async with` for automatic cleanup.
+
+### Notes
+- Backward compatible — no existing public APIs changed; all new arguments
+  have defaults.
+- The previously-defined `reviews`, `rankings`, and `similar_apps` fields on
+  `AppMetadataCombined` remain unpopulated by the existing extractors — use
+  the new dedicated extractors instead.
+- `similar_apps` extraction is intentionally out of scope for 0.2.0.
+- Test infrastructure: `pytest` now defaults to skipping `@pytest.mark.integration`
+  tests; opt in with `pytest -m integration` to hit real Apple endpoints.
+
 ## [0.1.12] - 2025-08-06
 
 ### Added
