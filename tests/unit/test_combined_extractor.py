@@ -104,7 +104,9 @@ class TestCombinedExtractor:
         result = await combined_extractor.extract_with_mode(url, skip_web_scraping=True)
 
         assert result == mock_result
-        combined_extractor.itunes_extractor.extract.assert_called_once_with(url)
+        combined_extractor.itunes_extractor.extract.assert_called_once_with(
+            url, country="us"
+        )
 
     @pytest.mark.asyncio
     async def test_extract_with_mode_combined(
@@ -128,7 +130,7 @@ class TestCombinedExtractor:
         )
 
         assert result == mock_result
-        combined_extractor.extract.assert_called_once_with(url)
+        combined_extractor.extract.assert_called_once_with(url, country="us")
 
     def test_fetch_synchronous_success(self, combined_extractor, mock_itunes_metadata):
         """Test synchronous fetch method with successful extraction."""

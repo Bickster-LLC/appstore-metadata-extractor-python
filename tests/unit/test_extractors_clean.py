@@ -21,10 +21,29 @@ from appstore_metadata_extractor.core.models import (
 )
 
 
+def test_apply_country_to_url_rewrites_storefront() -> None:
+    """WebScraperExtractor rewrites the /<cc>/app/ segment to match country."""
+    url = "https://apps.apple.com/us/app/whatsapp-messenger/id310633997"
+    rewritten = WebScraperExtractor._apply_country_to_url(url, "gb")
+    assert rewritten == "https://apps.apple.com/gb/app/whatsapp-messenger/id310633997"
+
+
+def test_apply_country_to_url_idempotent_for_same_country() -> None:
+    """Rewriting to the same country leaves the URL unchanged."""
+    url = "https://apps.apple.com/us/app/foo/id1"
+    assert WebScraperExtractor._apply_country_to_url(url, "us") == url
+
+
+def test_apply_country_to_url_unchanged_when_no_storefront() -> None:
+    """URLs without a /<cc>/app/ segment are returned unchanged."""
+    url = "https://apps.apple.com/app/id1"
+    assert WebScraperExtractor._apply_country_to_url(url, "gb") == url
+
+
 class ConcreteExtractor(BaseExtractor):
     """Concrete implementation of BaseExtractor for testing."""
 
-    async def extract(self, url: str) -> ExtractionResult:
+    async def extract(self, url: str, country: str = "us") -> ExtractionResult:
         """Simple extract implementation."""
         return ExtractionResult(
             app_id="123456789",

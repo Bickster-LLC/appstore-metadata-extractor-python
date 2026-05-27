@@ -4,6 +4,8 @@ import pytest
 
 from appstore_metadata_extractor import CombinedExtractor, WBSConfig
 
+pytestmark = pytest.mark.integration
+
 
 class TestPlatformSpecificScreenshots:
     """Test extraction of screenshots using platform-specific URL parameters."""

@@ -14,6 +14,8 @@ from appstore_metadata_extractor.wbs_extractor import (
     WBSMetadataExtractor,
 )
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_wbs_extractor():

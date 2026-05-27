@@ -1,22 +1,34 @@
-__version__ = "0.1.12"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+__version__ = "0.2.0"
+__author__ = "Bickster LLC"
+__email__ = "support@bickster.com"
 
 # Import from core module
 from .core import (  # Extractors; Models; Validation; Cache
     AppMetadata,
+    AppStoreRankingFetcher,
+    AppStoreReviewExtractor,
+    AppStoreSearcher,
     BaseExtractor,
     CacheManager,
+    ChartKind,
+    ChartSnapshot,
     CombinedExtractor,
+    CompositeAppStoreClient,
     ExtendedAppMetadata,
     ExtractionMode,
     ExtractionResult,
     ITunesAPIExtractor,
+    RankingEntry,
     RateLimiter,
+    ReviewBatch,
+    SearchHit,
+    SearchResults,
+    SortOrder,
     WBSConfig,
     WBSValidator,
     WebScraperExtractor,
 )
+from .models_combined import Review
 
 # Legacy imports for backward compatibility
 from .scraper import AppStoreScraper
@@ -39,6 +51,19 @@ __all__ = [
     "WBSValidator",
     "CacheManager",
     "RateLimiter",
+    # v0.2.0 — search, reviews, rankings, composite client
+    "AppStoreSearcher",
+    "SearchHit",
+    "SearchResults",
+    "AppStoreReviewExtractor",
+    "Review",
+    "ReviewBatch",
+    "SortOrder",
+    "AppStoreRankingFetcher",
+    "RankingEntry",
+    "ChartSnapshot",
+    "ChartKind",
+    "CompositeAppStoreClient",
     # Legacy exports
     "AppStoreScraper",
     "CombinedAppStoreScraper",

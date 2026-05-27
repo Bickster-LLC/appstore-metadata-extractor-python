@@ -11,6 +11,8 @@ from PIL import Image
 
 from appstore_metadata_extractor.core import CombinedExtractor, WBSConfig
 
+pytestmark = pytest.mark.integration
+
 
 class ScreenshotValidator:
     """Helper class to validate screenshot dimensions."""
