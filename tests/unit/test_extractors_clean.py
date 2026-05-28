@@ -197,6 +197,141 @@ class TestWebScraperExtractor:
         assert hasattr(web_extractor, "wbs_config")
         assert hasattr(web_extractor, "timeout")
 
+    def test_extract_subtitle_new_svelte_format(self, web_extractor):
+        """Subtitle is read from the Svelte <p class='subtitle'> element.
+
+        Apple migrated the product page to a Svelte frontend; the subtitle
+        moved from <h2 class='product-header__subtitle'> to
+        <p class='subtitle svelte-XXXXX'>. The svelte-XXXXX hash is volatile,
+        so only the stable 'subtitle' token is matched.
+        """
+        from bs4 import BeautifulSoup
+
+        html = (
+            '<section class="svelte-kps97o">'
+            '<p class="subtitle svelte-kps97o">Simple. Reliable. Private.</p>'
+            "</section>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        assert web_extractor._extract_subtitle(soup) == "Simple. Reliable. Private."
+
+    def test_extract_subtitle_legacy_format(self, web_extractor):
+        """The legacy <h2 class='product-header__subtitle'> still works."""
+        from bs4 import BeautifulSoup
+
+        html = '<h2 class="product-header__subtitle">Legacy Subtitle</h2>'
+        soup = BeautifulSoup(html, "lxml")
+        assert web_extractor._extract_subtitle(soup) == "Legacy Subtitle"
+
+    def test_extract_subtitle_absent(self, web_extractor):
+        """No subtitle element returns None."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup("<div>no subtitle here</div>", "lxml")
+        assert web_extractor._extract_subtitle(soup) is None
+
+    def test_extract_in_app_purchases_new_svelte_format(self, web_extractor):
+        """IAPs are read from the Svelte text-pair definition list.
+
+        Apple migrated the product page to a Svelte frontend; the IAP list moved
+        from <li class='list-with-numbers__item'> spans to
+        <dt>In-App Purchases</dt><dd><details><ul><li>
+        <div class='text-pair'><span>Name</span><span>$Price</span></div>.
+        The svelte-XXXXX hashes are volatile, so only the stable 'text-pair'
+        token and the dt label are matched. The trailing 'Learn More' row, which
+        carries no price, must be skipped.
+        """
+        from bs4 import BeautifulSoup
+
+        html = (
+            "<dl>"
+            "<dt>In-App Purchases</dt>"
+            '<dd><details class="svelte-abc"><summary>Yes</summary><ul>'
+            '<li class="svelte-xyz"><div class="text-pair svelte-xyz">'
+            "<span>Monthly Plan</span><span>$9.99</span></div></li>"
+            '<li class="svelte-xyz"><div class="text-pair svelte-xyz">'
+            "<span>Lifetime</span><span>$49.99</span></div></li>"
+            '<li class="svelte-xyz"><a href="#">Learn More</a></li>'
+            "</ul></details></dd>"
+            "</dl>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        iaps = web_extractor._extract_in_app_purchases(soup)
+
+        assert len(iaps) == 2
+        assert iaps[0]["name"] == "Monthly Plan"
+        assert iaps[0]["price"] == "$9.99"
+        assert iaps[0]["price_value"] == 9.99
+        assert iaps[0]["type"] == "auto_renewable_subscription"
+        assert iaps[1]["name"] == "Lifetime"
+        assert iaps[1]["type"] == "non_consumable"
+
+    def test_extract_in_app_purchases_legacy_format(self, web_extractor):
+        """The legacy list-with-numbers__item span structure still works."""
+        from bs4 import BeautifulSoup
+
+        html = (
+            '<section class="section section--information">'
+            "<dt>In-App Purchases</dt>"
+            "<dd><ul>"
+            '<li class="list-with-numbers__item">'
+            '<span class="list-with-numbers__item__title">Pro Upgrade</span>'
+            '<span class="list-with-numbers__item__price">$4.99</span>'
+            "</li>"
+            "</ul></dd>"
+            "</section>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        iaps = web_extractor._extract_in_app_purchases(soup)
+
+        assert len(iaps) == 1
+        assert iaps[0]["name"] == "Pro Upgrade"
+        assert iaps[0]["price"] == "$4.99"
+
+    def test_extract_in_app_purchases_absent(self, web_extractor):
+        """No In-App Purchases section returns an empty list."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup("<dl><dt>Size</dt><dd>10 MB</dd></dl>", "lxml")
+        assert web_extractor._extract_in_app_purchases(soup) == []
+
+    def test_extract_privacy_policy_url_new_svelte_format(self, web_extractor):
+        """Privacy Policy is read from a standalone Svelte anchor by exact text."""
+        from bs4 import BeautifulSoup
+
+        html = (
+            '<a class="with-arrow svelte-abc" href="https://example.com/privacy">'
+            "Privacy Policy</a>"
+            '<a class="svelte-abc" href="https://example.com/other">'
+            "developer’s privacy policy</a>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        assert str(web_extractor._extract_privacy_policy_url(soup)) == (
+            "https://example.com/privacy"
+        )
+
+    def test_extract_developer_website_url_new_svelte_format(self, web_extractor):
+        """Developer Website is read from a standalone Svelte anchor by exact text."""
+        from bs4 import BeautifulSoup
+
+        html = (
+            '<a class="with-arrow svelte-abc" href="https://example.com/">'
+            "Developer Website</a>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        assert str(web_extractor._extract_developer_website_url(soup)) == (
+            "https://example.com/"
+        )
+
+    def test_extract_info_urls_absent(self, web_extractor):
+        """Missing info links return None."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup("<div>nothing here</div>", "lxml")
+        assert web_extractor._extract_privacy_policy_url(soup) is None
+        assert web_extractor._extract_developer_website_url(soup) is None
+        assert web_extractor._extract_app_support_url(soup) is None
+
 
 class TestCombinedExtractor:
     """Test CombinedExtractor class - only working tests."""

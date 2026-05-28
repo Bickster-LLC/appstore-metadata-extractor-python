@@ -499,8 +499,16 @@ class WebScraperExtractor(BaseExtractor):
         return "Unknown"
 
     def _extract_subtitle(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extract app subtitle."""
-        subtitle_elem = soup.find("h2", class_="product-header__subtitle")
+        """Extract app subtitle.
+
+        Apple's Svelte product page renders the subtitle as
+        <p class="subtitle svelte-XXXXX">. The svelte-XXXXX hash is volatile,
+        so match only the stable "subtitle" token. Falls back to the legacy
+        <h2 class="product-header__subtitle"> for older page formats.
+        """
+        subtitle_elem = soup.find("p", class_="subtitle")
+        if not subtitle_elem:
+            subtitle_elem = soup.find("h2", class_="product-header__subtitle")
         if subtitle_elem and subtitle_elem.text:
             return str(subtitle_elem.text).strip()
         return None
@@ -563,130 +571,101 @@ class WebScraperExtractor(BaseExtractor):
         return bool(iap_elem)
 
     def _extract_in_app_purchases(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
-        """Extract detailed in-app purchase information."""
-        iap_list = []
+        """Extract detailed in-app purchase information.
 
-        # Look for the Information section
-        info_section = soup.find("section", class_="section section--information")
-        if not info_section:
-            info_section = soup.find("section", {"class": re.compile("information")})
+        Apple's Svelte product page renders IAPs as a definition list:
+        ``<dt>In-App Purchases</dt><dd><details><ul><li>
+        <div class="text-pair"><span>Name</span><span>$Price</span></div>``.
+        The svelte-XXXXX class hashes are volatile, so the stable ``text-pair``
+        token and the "In-App Purchases" dt label are matched instead. Falls
+        back to the legacy ``list-with-numbers__item`` spans and the oldest
+        concatenated "Name$Price" text format.
+        """
+        iap_list: List[Dict[str, Any]] = []
 
-        if info_section and isinstance(info_section, Tag):
-            # Find the dt element with "In-App Purchases"
-            iap_dt = info_section.find("dt", string=re.compile(r"In-App Purchases"))
-            if iap_dt and isinstance(iap_dt, Tag):
-                # Find the corresponding dd element
-                iap_dd = iap_dt.find_next_sibling("dd")
-                if iap_dd and isinstance(iap_dd, Tag):
-                    # Method 1: New structure with separate spans (as of 2025)
-                    items = iap_dd.find_all("li", class_="list-with-numbers__item")
-                    if items:
-                        for item in items:
-                            if not isinstance(item, Tag):
-                                continue
-                            # Extract name from title span
-                            title_span = item.find(
-                                "span", class_="list-with-numbers__item__title"
-                            )
-                            # Extract price from price span
-                            price_span = item.find(
-                                "span", class_="list-with-numbers__item__price"
-                            )
+        # Locate the <dd> following the "In-App Purchases" <dt>. Scanning all dt
+        # tags (instead of a specific section) tolerates both the legacy
+        # section--information markup and the newer Svelte definition list.
+        iap_dd: Optional[Tag] = None
+        for dt in soup.find_all("dt"):
+            if isinstance(dt, Tag) and "In-App Purchases" in dt.get_text():
+                sibling = dt.find_next_sibling("dd")
+                if isinstance(sibling, Tag):
+                    iap_dd = sibling
+                break
 
-                            if isinstance(title_span, Tag) and isinstance(
-                                price_span, Tag
-                            ):
-                                name = title_span.get_text(strip=True)
-                                price_str = price_span.get_text(strip=True)
+        if iap_dd is None:
+            return iap_list
 
-                                # Extract numeric price
-                                price_value = None
-                                try:
-                                    price_value = float(
-                                        re.sub(r"[^\d.]", "", price_str)
-                                    )
-                                except Exception:
-                                    pass
+        for item in iap_dd.find_all("li"):
+            if not isinstance(item, Tag):
+                continue
 
-                                # Determine IAP type based on name
-                                iap_type = "unknown"
-                                name_lower = name.lower()
-                                if any(
-                                    word in name_lower
-                                    for word in [
-                                        "monthly",
-                                        "month",
-                                        "annual",
-                                        "year",
-                                        "weekly",
-                                        "week",
-                                        "subscription",
-                                    ]
-                                ):
-                                    iap_type = "auto_renewable_subscription"
-                                elif "lifetime" in name_lower:
-                                    iap_type = "non_consumable"
+            name: Optional[str] = None
+            price_str: Optional[str] = None
 
-                                iap_list.append(
-                                    {
-                                        "name": name,
-                                        "price": price_str,
-                                        "price_value": price_value,
-                                        "currency": "USD",
-                                        "type": iap_type,
-                                    }
-                                )
+            # New Svelte structure: <div class="text-pair"><span>name</span><span>price</span>
+            pair = item.find("div", class_="text-pair")
+            if isinstance(pair, Tag):
+                spans = pair.find_all("span")
+                if len(spans) >= 2:
+                    name = spans[0].get_text(strip=True)
+                    price_str = spans[1].get_text(strip=True)
+            else:
+                # Legacy structure: separate title/price spans
+                title_span = item.find("span", class_="list-with-numbers__item__title")
+                price_span = item.find("span", class_="list-with-numbers__item__price")
+                if isinstance(title_span, Tag) and isinstance(price_span, Tag):
+                    name = title_span.get_text(strip=True)
+                    price_str = price_span.get_text(strip=True)
+                else:
+                    # Oldest structure: concatenated "Name$1.99" text
+                    text = item.get_text(strip=True)
+                    price_match = re.search(r"(\$[\d.,]+)$", text)
+                    if price_match:
+                        price_str = price_match.group(1)
+                        name = text[: price_match.start()].strip()
 
-                    # Method 2: Old structure with concatenated text (fallback)
-                    if not iap_list:
-                        # Try the old method where items might be in plain li tags
-                        items = iap_dd.find_all("li")
-                        for item in items:
-                            text = item.get_text(strip=True)
-                            # The text might be concatenated like "Headspace$12.99"
-                            # Look for price pattern at the end
-                            price_match = re.search(r"(\$[\d.,]+)$", text)
-                            if price_match:
-                                price_str = price_match.group(1)
-                                name = text[: price_match.start()].strip()
+            if not name or not price_str:
+                continue
+            # Skip non-purchase rows such as the trailing "Learn More" link,
+            # whose second cell carries no numeric price.
+            if not re.search(r"\d", price_str):
+                continue
 
-                                # Extract numeric price
-                                price_value = None
-                                try:
-                                    price_value = float(
-                                        re.sub(r"[^\d.]", "", price_str)
-                                    )
-                                except Exception:
-                                    pass
+            price_value: Optional[float] = None
+            try:
+                price_value = float(re.sub(r"[^\d.]", "", price_str))
+            except Exception:
+                pass
 
-                                # Determine IAP type based on name
-                                iap_type = "unknown"
-                                name_lower = name.lower()
-                                if any(
-                                    word in name_lower
-                                    for word in [
-                                        "monthly",
-                                        "month",
-                                        "annual",
-                                        "year",
-                                        "weekly",
-                                        "week",
-                                        "subscription",
-                                    ]
-                                ):
-                                    iap_type = "auto_renewable_subscription"
-                                elif "lifetime" in name_lower:
-                                    iap_type = "non_consumable"
+            iap_type = "unknown"
+            name_lower = name.lower()
+            if any(
+                word in name_lower
+                for word in [
+                    "monthly",
+                    "month",
+                    "annual",
+                    "year",
+                    "weekly",
+                    "week",
+                    "subscription",
+                ]
+            ):
+                iap_type = "auto_renewable_subscription"
+            elif "lifetime" in name_lower:
+                iap_type = "non_consumable"
 
-                                iap_list.append(
-                                    {
-                                        "name": name,
-                                        "price": price_str,
-                                        "price_value": price_value,
-                                        "currency": "USD",
-                                        "type": iap_type,
-                                    }
-                                )
+            iap_list.append(
+                {
+                    "name": name,
+                    "price": price_str,
+                    "price_value": price_value,
+                    "currency": "USD",
+                    "type": iap_type,
+                }
+            )
 
         return iap_list
 
@@ -1059,8 +1038,38 @@ class WebScraperExtractor(BaseExtractor):
 
         return codes
 
+    @staticmethod
+    def _find_link_by_text(soup: BeautifulSoup, label: str) -> Optional[HttpUrl]:
+        """Return the href of the first anchor whose visible text equals ``label``.
+
+        The Svelte product page renders the information links (Developer
+        Website, Privacy Policy, App Support) as standalone ``<a class="with-arrow">``
+        anchors rather than nesting them in a section. Matching on the exact
+        visible text is resilient to the volatile svelte-XXXXX class hashes.
+        """
+        for link in soup.find_all("a"):
+            if (
+                isinstance(link, Tag)
+                and link.get("href")
+                and link.get_text(strip=True) == label
+            ):
+                href = link.get("href")
+                if href:
+                    return HttpUrl(str(href))
+        return None
+
     def _extract_app_support_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
-        """Extract app support URL."""
+        """Extract app support URL.
+
+        Note: Apple removed the explicit "App Support" link from the current
+        web product page, so this commonly returns None. The lookup is retained
+        for forward compatibility and for older cached page formats.
+        """
+        # New Svelte structure: standalone anchor with exact "App Support" text
+        url = self._find_link_by_text(soup, "App Support")
+        if url:
+            return url
+
         # Look for the Information section
         info_section = soup.find("section", class_="section section--information")
         if not info_section:
@@ -1095,6 +1104,11 @@ class WebScraperExtractor(BaseExtractor):
 
     def _extract_privacy_policy_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
         """Extract privacy policy URL."""
+        # New Svelte structure: standalone anchor with exact "Privacy Policy" text
+        url = self._find_link_by_text(soup, "Privacy Policy")
+        if url:
+            return url
+
         # Look for the Information section
         info_section = soup.find("section", class_="section section--information")
         if not info_section:
@@ -1129,6 +1143,11 @@ class WebScraperExtractor(BaseExtractor):
 
     def _extract_developer_website_url(self, soup: BeautifulSoup) -> Optional[HttpUrl]:
         """Extract developer website URL."""
+        # New Svelte structure: standalone anchor with exact "Developer Website" text
+        url = self._find_link_by_text(soup, "Developer Website")
+        if url:
+            return url
+
         # Look for the Information section
         info_section = soup.find("section", class_="section section--information")
         if not info_section:

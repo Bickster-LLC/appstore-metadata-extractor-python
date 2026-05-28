@@ -69,7 +69,8 @@ async def test_combined_extractor_integration():
         if metadata.in_app_purchase_list:
             print(f"  - Found {len(metadata.in_app_purchase_list)} IAP items")
             for iap in metadata.in_app_purchase_list[:3]:  # Show first 3
-                print(f"    • {iap.name}: {iap.price}")
+                # AppMetadataCombined stores IAPs as dicts, not objects.
+                print(f"    • {iap['name']}: {iap['price']}")
         print(f"✓ Bundle ID: {metadata.bundle_id}")
         print(f"✓ Categories: {', '.join(metadata.categories)}")
         print(f"✓ Languages: {len(metadata.languages)} supported")
@@ -102,9 +103,19 @@ async def test_combined_extractor_integration():
         # Assertions
         assert metadata.bundle_id is not None, "Bundle ID should be extracted"
         assert metadata.subtitle is not None, "Subtitle should be extracted from web"
+        # Apple removed the explicit "App Support" link from the web product
+        # page (and it was never in the iTunes API), so app_support_url is no
+        # longer reliably available. The Developer Website and Privacy Policy
+        # links remain and must be scraped from the Svelte product page.
         assert (
-            metadata.app_support_url is not None
-        ), "App support URL should be extracted"
+            metadata.privacy_policy_url is not None
+        ), "Privacy policy URL should be extracted"
+        assert (
+            metadata.developer_website_url is not None
+        ), "Developer website URL should be extracted"
+        assert (
+            metadata.in_app_purchase_list
+        ), "In-app purchase list should be extracted from web"
     else:
         print(f"✗ Error: {result.error}")
         pytest.fail("Combined extraction failed")

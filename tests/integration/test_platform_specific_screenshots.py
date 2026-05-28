@@ -1,4 +1,13 @@
-"""Test handling of platform-specific screenshot extraction using URL parameters."""
+"""Test extraction of iPhone and iPad screenshots for dual-platform apps.
+
+These tests originally targeted the "XiVi" app (id6503696206), which exposed a
+generic "Screenshots" section. That app was renamed and no longer carries
+screenshots, and Apple migrated the product page to a Svelte frontend whose
+markup the legacy web screenshot scraper no longer matches. The combined
+extractor now sources screenshots primarily from the iTunes API, so these tests
+use a stable first-party app (Apple Books) that publishes both iPhone and iPad
+screenshots and verify that distinct screenshot sets are returned per device.
+"""
 
 import pytest
 
@@ -6,21 +15,23 @@ from appstore_metadata_extractor import CombinedExtractor, WBSConfig
 
 pytestmark = pytest.mark.integration
 
+# Stable first-party app that publishes both iPhone and iPad screenshots.
+DUAL_PLATFORM_APP_URL = "https://apps.apple.com/us/app/apple-books/id364709193"
+DUAL_PLATFORM_APP_NAME = "Apple Books"
+
 
 class TestPlatformSpecificScreenshots:
-    """Test extraction of screenshots using platform-specific URL parameters."""
+    """Test extraction of iPhone and iPad screenshots from a dual-platform app."""
 
-    def test_xivi_app_screenshots(self):
-        """Test extraction from XIVI app which has both iPhone and iPad screenshots."""
+    def test_dual_platform_app_screenshots(self):
+        """An app with both device types yields both screenshot sets."""
         config = WBSConfig()
         extractor = CombinedExtractor(config)
 
-        # XIVI app has a generic "Screenshots" section with both device types
-        url = "https://apps.apple.com/us/app/xivi-ai-chat-assistant/id6503696206"
-        metadata = extractor.fetch(url)
+        metadata = extractor.fetch(DUAL_PLATFORM_APP_URL)
 
         # Should extract both iPhone and iPad screenshots
-        assert metadata.name == "XiVi - AI Chat Assistant"
+        assert metadata.name == DUAL_PLATFORM_APP_NAME
         assert len(metadata.screenshots) > 0, "Should extract iPhone screenshots"
         assert len(metadata.ipad_screenshots) > 0, "Should extract iPad screenshots"
 
@@ -40,13 +51,12 @@ class TestPlatformSpecificScreenshots:
             "mzstatic.com" in str(url) for url in metadata.ipad_screenshots
         ), "iPad screenshots should be from Apple's CDN"
 
-    def test_platform_specific_extraction(self):
-        """Test that platform-specific URLs correctly extract device screenshots."""
+    def test_iphone_and_ipad_sets_differ(self):
+        """iPhone and iPad screenshot sets are distinct for a dual-platform app."""
         config = WBSConfig()
         extractor = CombinedExtractor(config)
 
-        url = "https://apps.apple.com/us/app/xivi-ai-chat-assistant/id6503696206"
-        metadata = extractor.fetch(url)
+        metadata = extractor.fetch(DUAL_PLATFORM_APP_URL)
 
         # Both iPhone and iPad screenshots should be extracted
         assert len(metadata.screenshots) > 0, "Should have iPhone screenshots"
@@ -64,15 +74,11 @@ class TestPlatformSpecificScreenshots:
     @pytest.mark.parametrize(
         "app_url,app_name",
         [
-            # Add more apps here that have generic Screenshots sections
-            (
-                "https://apps.apple.com/us/app/xivi-ai-chat-assistant/id6503696206",
-                "XiVi - AI Chat Assistant",
-            ),
+            (DUAL_PLATFORM_APP_URL, DUAL_PLATFORM_APP_NAME),
         ],
     )
-    def test_various_generic_screenshot_apps(self, app_url, app_name):
-        """Test various apps with generic screenshot sections."""
+    def test_various_dual_platform_apps(self, app_url, app_name):
+        """Apps with both device types expose screenshots via the extractor."""
         config = WBSConfig()
         extractor = CombinedExtractor(config)
 

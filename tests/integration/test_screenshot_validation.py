@@ -301,14 +301,20 @@ async def test_batch_screenshot_validation():
     print("=" * 60)
 
     apps = [
-        ("Pages", "https://apps.apple.com/us/app/pages/id409201541"),
+        ("Pages", "https://apps.apple.com/us/app/pages/id361309726"),
         ("GoodNotes", "https://apps.apple.com/us/app/goodnotes-5/id1444383602"),
         ("Notability", "https://apps.apple.com/us/app/notability/id360593530"),
     ]
 
     results = []
     for name, app_url in apps:
-        result = await extractor.fetch_combined(app_url, skip_web_scraping=True)
+        # Tolerate individual apps that have been pulled or had their store ID
+        # retired so one dead reference does not fail the whole batch.
+        try:
+            result = await extractor.fetch_combined(app_url, skip_web_scraping=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {name}: skipped ({exc})")
+            continue
         if result.success:
             m = result.app_metadata
             results.append(
