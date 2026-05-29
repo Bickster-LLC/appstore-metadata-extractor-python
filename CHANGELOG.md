@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-05-28
+
+### Fixed
+- **In-app purchase extraction for the Svelte App Store page**: Apple migrated
+  the product page to a Svelte frontend, removing the `section--information`
+  and `list-with-numbers__item` markup the scraper relied on, which silently
+  returned an empty IAP list. `_extract_in_app_purchases` now reads the
+  current `<dt>In-App Purchases</dt><dd>…<div class="text-pair">` structure
+  (matching the stable `text-pair` token rather than volatile `svelte-*`
+  hashes) and skips non-purchase rows such as the trailing "Learn More" link.
+  Legacy markup is still handled as a fallback.
+- **Developer Website / Privacy Policy URL extraction**: these links moved out
+  of the information section into standalone anchors. They are now matched by
+  exact anchor text globally, so `developer_website_url` and
+  `privacy_policy_url` populate again.
+
+### Changed
+- `app_support_url` is now typically `None`: Apple removed the explicit
+  "App Support" link from the web product page, and it was never available
+  from the iTunes API. The lookup is retained for forward compatibility.
+
+### Known Issues
+- Web screenshot scraping (`_extract_screenshots` /
+  `_extract_ipad_screenshots`) no longer matches the Svelte markup and returns
+  nothing. In combined mode screenshots are sourced from the iTunes API, which
+  covers most apps; a dedicated fix is tracked for a future release.
+
 ## [0.2.0] - 2026-05-25
 
 ### Added
