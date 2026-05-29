@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-05-28
+
+### Documentation
+- Update the README "What's New" section to cover the v0.2.1/v0.2.2 App Store
+  Svelte scraper fixes. The README is the package long description shown on
+  PyPI, so this release exists to surface those notes on the PyPI project page
+  (distribution metadata is immutable per version). No code changes.
+
 ## [0.2.2] - 2026-05-28
 
 Re-release of 0.2.1 with corrected, structured release notes. No functional

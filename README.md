@@ -28,6 +28,22 @@ Extract and monitor metadata from Apple App Store applications with ease.
 pip install apple-appstore-metadata-extractor
 ```
 
+## What's New in v0.2.2
+
+Scraper fix for Apple's migration of the App Store product page to a Svelte
+frontend, which had silently broken several web-scraped fields:
+
+- **In-app purchases** — `in_app_purchase_list` is populated again (item names
+  and prices), parsed from the new Svelte markup.
+- **Developer Website / Privacy Policy URLs** — `developer_website_url` and
+  `privacy_policy_url` are extracted again.
+- `app_support_url` is now typically `None` — Apple removed the explicit
+  "App Support" link from the web product page.
+
+> **Known issue:** web screenshot scraping no longer matches the Svelte markup
+> and returns nothing; in combined mode screenshots are sourced from the iTunes
+> API (which covers most apps). A dedicated fix is tracked for a future release.
+
 ## What's New in v0.2.0
 
 v0.2.0 closes three gaps that previously required a third-party service:
