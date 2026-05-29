@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-05-28
+
+### Documentation
+- Correct the README API examples, which are also the PyPI project
+  description. The quick-start and async examples now use the modern
+  `CombinedExtractor(WBSConfig())` API with accurate field names and methods
+  (`fetch`, `fetch_batch`, `fetch_batch_async`); the previous snippets used
+  legacy `AppStoreScraper` attributes, called `CombinedExtractor()` with no
+  args, and referenced a non-existent `extract_batch()`.
+- Fix the migration, extraction-mode, rate-limiting, caching, and
+  error-handling snippets to match the real API (`skip_web_scraping` flag,
+  `RateLimiter.configure()`, `CacheManager(default_ttl=…)`,
+  `CompositeAppStoreClient` injection, and the actual exceptions in
+  `core.exceptions`; `AppNotFoundError` never existed).
+- Mark model fields that exist but are not populated by the extractors
+  (`features`, `rating_distribution`, `version_history`, `categories`,
+  `content_advisories`, `privacy`, `similar_apps`, `developer_apps`,
+  `rankings`, `support_url`, `marketing_url`, `icon_urls`,
+  `supported_devices`) as "reserved — not yet populated".
+
+No code changes.
+
 ## [0.2.3] - 2026-05-28
 
 ### Documentation
