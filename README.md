@@ -114,59 +114,73 @@ appstore-extractor watch apps.json --interval 3600
 ### Python Library
 
 ```python
-from appstore_metadata_extractor import AppStoreScraper
+from appstore_metadata_extractor import CombinedExtractor, WBSConfig
 
-# Initialize scraper
-scraper = AppStoreScraper()
+# Initialize the combined extractor (iTunes API + web scraping)
+extractor = CombinedExtractor(WBSConfig())
 
 # Extract single app metadata
-metadata = scraper.extract("https://apps.apple.com/us/app/example/id123456789")
-print(f"App: {metadata.title}")
-print(f"Version: {metadata.version}")
-print(f"Rating: {metadata.rating}")
+metadata = extractor.fetch("https://apps.apple.com/us/app/example/id123456789")
+print(f"App: {metadata.name}")
+print(f"Version: {metadata.current_version}")
+print(f"Rating: {metadata.average_rating} ({metadata.rating_count} ratings)")
 
-# Access In-App Purchases
+# Access In-App Purchases (items are InAppPurchase objects on this model)
 if metadata.in_app_purchases:
     print(f"\nIn-App Purchases ({len(metadata.in_app_purchase_list)} items):")
     for iap in metadata.in_app_purchase_list:
-        print(f"  - {iap['name']}: {iap['price']}")
+        print(f"  - {iap.name}: {iap.price}")
 
-# Access Support Links
+# Access Support Links (from web scraping). Note: app_support_url is usually
+# None — Apple removed the "App Support" link from the web product page.
 print(f"\nSupport Links:")
-print(f"  App Support: {metadata.app_support_url}")
 print(f"  Privacy Policy: {metadata.privacy_policy_url}")
 print(f"  Developer Website: {metadata.developer_website_url}")
 
-# Access Screenshots (NEW in v0.1.10)
+# Access Screenshots
 print(f"\nScreenshots:")
 print(f"  iPhone: {len(metadata.screenshots)} screenshots")
 print(f"  iPad: {len(metadata.ipad_screenshots)} screenshots")
 if metadata.ipad_screenshots:
     print(f"  First iPad screenshot: {metadata.ipad_screenshots[0]}")
 
-# Extract multiple apps
+# Extract multiple apps (synchronous) -> dict keyed by URL (successful only)
 urls = [
     "https://apps.apple.com/us/app/app1/id111111111",
     "https://apps.apple.com/us/app/app2/id222222222"
 ]
-results = scraper.extract_batch(urls)
+results = extractor.fetch_batch(urls)
 ```
+
+> **Note on IAP access:** `CombinedExtractor.fetch()` returns an
+> `ExtendedAppMetadata` whose `in_app_purchase_list` holds `InAppPurchase`
+> objects (`iap.name`). The backward-compatible `fetch_combined()` returns an
+> `AppMetadataCombined` whose `in_app_purchase_list` holds plain dicts
+> (`iap["name"]`). Use the access style that matches the method you call.
 
 ### Async Usage
 
 ```python
 import asyncio
-from appstore_metadata_extractor import CombinedExtractor
+from appstore_metadata_extractor import CombinedExtractor, WBSConfig
 
 async def main():
-    extractor = CombinedExtractor()
+    extractor = CombinedExtractor(WBSConfig())
 
-    # Extract single app
+    # Extract single app -> ExtractionResult (.success, .metadata)
     result = await extractor.extract("https://apps.apple.com/us/app/example/id123456789")
+    if result.success:
+        print(result.metadata.name, result.metadata.current_version)
 
-    # Extract multiple apps concurrently
-    urls = ["url1", "url2", "url3"]
-    results = await extractor.extract_batch(urls)
+    # Extract multiple apps concurrently -> list of ExtractionResult
+    urls = [
+        "https://apps.apple.com/us/app/app1/id111111111",
+        "https://apps.apple.com/us/app/app2/id222222222",
+    ]
+    results = await extractor.fetch_batch_async(urls)
+    for r in results:
+        if r.success:
+            print(r.metadata.name)
 
 asyncio.run(main())
 ```
@@ -357,6 +371,16 @@ For batch operations, use a JSON file:
 
 The extractor provides comprehensive app metadata including:
 
+> **Note:** Some fields below are defined on the model but **not yet populated**
+> by the current extractors — they return their default (`None`, `[]`, or
+> `False`) and are marked _(reserved — not yet populated)_. Reserved fields:
+> `categories`, `category_ids`, `version_history`, `content_advisories`,
+> `rating_distribution`, `reviews`, `icon_urls`, `supported_devices`,
+> `features`, `privacy`, `developer_apps`, `similar_apps`, `rankings`,
+> `support_url`, `marketing_url`, `is_game_center_enabled`,
+> `is_vpp_device_based_licensing_enabled`. For reviews and chart rankings, use
+> the dedicated `AppStoreReviewExtractor` and `AppStoreRankingFetcher` instead.
+
 ### Basic Information
 - **app_id** - Apple App Store ID
 - **bundle_id** - App bundle identifier
@@ -370,8 +394,8 @@ The extractor provides comprehensive app metadata including:
 ### Categories
 - **category** / **primary_category** - Primary category name
 - **category_id** / **primary_category_id** - Primary category ID
-- **categories** - List of all categories
-- **category_ids** - List of all category IDs
+- **categories** - List of all categories _(reserved — not yet populated; use `category`)_
+- **category_ids** - List of all category IDs _(reserved — not yet populated; use `category_id`)_
 
 ### Pricing & Purchases
 - **price** - App price (numeric value)
@@ -389,14 +413,14 @@ The extractor provides comprehensive app metadata including:
 - **current_version** - Current version number
 - **version_date** / **current_version_release_date** - Release date
 - **whats_new** / **release_notes** - What's new in this version
-- **version_history** - List of previous versions (web scraping required)
+- **version_history** - List of previous versions _(reserved — not yet populated)_
 - **initial_release_date** - First release date
 - **last_updated** - Last update to any field
 
 ### Content & Description
 - **description** - Full app description
 - **content_rating** - Age rating (e.g., "4+", "12+")
-- **content_advisories** - List of content warnings
+- **content_advisories** - List of content warnings _(reserved — not yet populated)_
 
 ### Languages (web scraping required)
 - **languages** - Human-readable language names (e.g., "English", "Spanish")
@@ -407,44 +431,44 @@ The extractor provides comprehensive app metadata including:
 - **rating_count** - Total number of ratings
 - **average_rating_current_version** - Rating for current version
 - **rating_count_current_version** - Ratings for current version
-- **rating_distribution** - Star breakdown (web scraping required)
-- **reviews** - User reviews list (web scraping required)
+- **rating_distribution** - Star breakdown _(reserved — not yet populated)_
+- **reviews** - User reviews list _(reserved on this model — use `AppStoreReviewExtractor`)_
 
 ### Media Assets
 - **icon_url** - App icon URL (512x512)
-- **icon_urls** - Dictionary of multiple icon sizes
+- **icon_urls** - Dictionary of multiple icon sizes _(reserved — not yet populated; use `icon_url`)_
 - **screenshots** - List of iPhone screenshot URLs
 - **ipad_screenshots** - List of iPad screenshot URLs (NEW in v0.1.10 - from iTunes API and web scraping)
 
 ### Support Links (web scraping required)
-- **app_support_url** - Direct link to app support page
+- **app_support_url** - Direct link to app support page _(usually `None` — Apple removed this link from the web product page)_
 - **privacy_policy_url** - Link to privacy policy
 - **developer_website_url** - Main developer website
-- **support_url** - Support website (alias)
-- **marketing_url** - Marketing website
+- **support_url** - Support website (alias) _(reserved — not yet populated)_
+- **marketing_url** - Marketing website _(reserved — not yet populated)_
 
 ### Technical Details
 - **file_size_bytes** - Size in bytes
 - **file_size_formatted** - Human-readable size (e.g., "245.8 MB")
 - **minimum_os_version** - Minimum iOS version required
-- **supported_devices** - List of compatible devices
+- **supported_devices** - List of compatible devices _(reserved — not yet populated)_
 
-### Features & Capabilities
+### Features & Capabilities _(reserved — not yet populated)_
 - **features** - List of app features/capabilities
 - **is_game_center_enabled** - Game Center support
 - **is_vpp_device_based_licensing_enabled** - VPP device licensing
 
-### Privacy Information (web scraping required)
+### Privacy Information _(reserved — not yet populated)_
 - **privacy** - Detailed privacy information including:
   - data_used_to_track
   - data_linked_to_you
   - data_not_linked_to_you
   - privacy_details_url
 
-### Related Content (web scraping required)
+### Related Content _(reserved — not yet populated)_
 - **developer_apps** - Other apps by the same developer
 - **similar_apps** - "You might also like" recommendations
-- **rankings** - Chart positions (e.g., {"Games": 5, "Overall": 23})
+- **rankings** - Chart positions (e.g., {"Games": 5, "Overall": 23}) — for chart data use `AppStoreRankingFetcher`
 
 ### Metadata
 - **data_source** - Source of the data (itunes_api, web_scrape, combined)
@@ -545,16 +569,16 @@ If you were using `CombinedAppStoreScraper`, it has been consolidated into `Comb
 
 ```python
 # Old way (still works via alias)
-from appstore_metadata_extractor import CombinedAppStoreScraper
-scraper = CombinedAppStoreScraper()
-result = scraper.fetch(url)
+from appstore_metadata_extractor import CombinedAppStoreScraper, WBSConfig
+scraper = CombinedAppStoreScraper(WBSConfig())
+metadata = scraper.fetch(url)
 
 # New way (recommended)
-from appstore_metadata_extractor import CombinedExtractor
-extractor = CombinedExtractor()
-metadata = extractor.fetch(url)  # Synchronous method
+from appstore_metadata_extractor import CombinedExtractor, WBSConfig
+extractor = CombinedExtractor(WBSConfig())
+metadata = extractor.fetch(url)              # Synchronous method
 # or
-result = await extractor.extract(url)  # Async method
+result = await extractor.extract(url)        # Async method -> ExtractionResult
 ```
 
 The new `CombinedExtractor` offers:
@@ -567,64 +591,76 @@ The new `CombinedExtractor` offers:
 
 ### Custom Extraction Modes
 
+Mode selection is controlled by the `skip_web_scraping` flag, not an
+`ExtractionMode` argument:
+
 ```python
-from appstore_metadata_extractor import CombinedExtractor, ExtractionMode
+from appstore_metadata_extractor import CombinedExtractor, WBSConfig
 
-extractor = CombinedExtractor()
+extractor = CombinedExtractor(WBSConfig())
 
-# API-only mode (faster, less data)
-result = await extractor.extract(url, mode=ExtractionMode.API_ONLY)
+# iTunes API only (faster; no IAPs, languages, or support URLs)
+metadata = extractor.fetch(url, skip_web_scraping=True)
 
-# Web scraping mode (slower, more complete)
-result = await extractor.extract(url, mode=ExtractionMode.WEB_SCRAPE)
+# Combined: iTunes API + web scraping (default — most complete)
+metadata = extractor.fetch(url, skip_web_scraping=False)
 
-# Combined mode (default - best of both)
-result = await extractor.extract(url, mode=ExtractionMode.COMBINED)
+# Async equivalents:
+#   result = await extractor.extract_with_mode(url, skip_web_scraping=True)
+#   result = await extractor.extract(url)  # always combined
 ```
 
 ### Rate Limiting Configuration
 
+`RateLimiter` is configured per service via `configure()` and shared across the
+extractors bundled in a `CompositeAppStoreClient`:
+
 ```python
-from appstore_metadata_extractor import RateLimiter
+from appstore_metadata_extractor import CompositeAppStoreClient, RateLimiter
 
-# Configure custom rate limits
-rate_limiter = RateLimiter(
-    calls_per_minute=20,  # iTunes API limit
-    min_delay=1.0        # Minimum delay between calls
-)
+rate_limiter = RateLimiter()
+rate_limiter.configure("itunes_api", max_requests=20, time_window=60)
 
-scraper = AppStoreScraper(rate_limiter=rate_limiter)
+async with CompositeAppStoreClient(rate_limiter=rate_limiter) as client:
+    hits = await client.search.search("habit tracker", limit=10)
 ```
 
 ### Caching
 
 ```python
-from appstore_metadata_extractor import CacheManager
+from appstore_metadata_extractor import CompositeAppStoreClient, CacheManager
 
-# Configure cache
-cache = CacheManager(
-    ttl=300,  # Cache TTL in seconds
-    max_size=1000  # Maximum cache entries
-)
+cache = CacheManager(default_ttl=300)  # Cache TTL in seconds
 
-scraper = AppStoreScraper(cache_manager=cache)
+async with CompositeAppStoreClient(cache_manager=cache) as client:
+    hits = await client.search.search("notes", limit=10)
 ```
 
 ## Error Handling
 
-The library provides robust error handling with automatic retries:
+The library retries transient failures automatically and raises typed
+exceptions (import from `appstore_metadata_extractor.core.exceptions`):
 
 ```python
-from appstore_metadata_extractor import AppNotFoundError, RateLimitError
+from appstore_metadata_extractor import CombinedExtractor, WBSConfig
+from appstore_metadata_extractor.core.exceptions import (
+    ExtractionError,   # e.g. no app found for the given ID
+    NetworkError,      # HTTP / connection failure
+    RateLimitError,    # rate limit exceeded
+    ValidationError,   # invalid App Store URL
+)
 
+extractor = CombinedExtractor(WBSConfig())
 try:
-    metadata = scraper.extract(url)
-except AppNotFoundError:
-    print("App not found")
+    metadata = extractor.fetch(url)
+except ValidationError:
+    print("Invalid App Store URL")
 except RateLimitError:
     print("Rate limit exceeded, please wait")
-except Exception as e:
-    print(f"Extraction failed: {e}")
+except NetworkError:
+    print("Network error")
+except ExtractionError:
+    print("Extraction failed (e.g. app not found)")
 ```
 
 ## Contributing
