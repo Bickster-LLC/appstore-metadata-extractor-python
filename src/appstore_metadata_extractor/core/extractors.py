@@ -770,6 +770,102 @@ class WebScraperExtractor(BaseExtractor):
 
         return HttpUrl("https://via.placeholder.com/512")
 
+    _SVELTE_IMAGE_RE = re.compile(r"/(\d{2,5})x(\d{2,5})(?:bb)?\.(?:png|jpe?g|webp)")
+    _SVELTE_ORIENTATION_RE = re.compile(r"orientation-([a-z]+)")
+    _SVELTE_URL_RE = re.compile(r"(https://[^\s,]+)")
+
+    def _extract_svelte_screenshot_pictures(
+        self, soup: BeautifulSoup
+    ) -> List[Dict[str, Any]]:
+        """Collect screenshot images from Apple's Svelte product page.
+
+        Apple migrated the product page to a Svelte frontend whose old
+        structural markers (``h2.section__headline``,
+        ``picture.we-artwork--screenshot``) no longer exist. Screenshots and
+        icons are now rendered as ``<picture><source srcset="…mzstatic…WxH…">``
+        wrapped in ``<div class="artwork-component artwork-component--orientation-XXX">``.
+        Icons carry ``orientation-square``; iPhone and iPad screenshots carry
+        ``orientation-portrait`` or ``orientation-landscape``.
+
+        For each unique image (deduplicated by the path prefix that precedes
+        the resolution segment) the highest-resolution variant is kept, with
+        PNG preferred over WebP. Returns a list of
+        ``{"url", "w", "h", "orient"}`` dicts; callers split iPhone vs iPad by
+        aspect ratio.
+        """
+        # group key -> (priority, w*h, dict)  where higher priority wins
+        # priority: 1 = png, 0 = webp/other; ties broken by area
+        best: Dict[str, tuple[int, int, Dict[str, Any]]] = {}
+
+        for source in soup.find_all("source"):
+            if not isinstance(source, Tag):
+                continue
+
+            # Determine orientation from the wrapping artwork-component div.
+            picture = source.find_parent("picture")
+            if picture is None:
+                continue
+            anc = picture.find_parent("div")
+            if not isinstance(anc, Tag):
+                continue
+            anc_cls = " ".join(anc.get("class") or [])
+            orient_match = self._SVELTE_ORIENTATION_RE.search(anc_cls)
+            if orient_match is None:
+                continue
+            orient = orient_match.group(1)
+            if orient not in ("portrait", "landscape"):
+                # Icons render with orientation-square; skip.
+                continue
+
+            srcset = source.get("srcset")
+            if not isinstance(srcset, str):
+                continue
+            stype = source.get("type") or ""
+            type_priority = 1 if stype == "image/png" else 0
+
+            for url in self._SVELTE_URL_RE.findall(srcset):
+                size = self._SVELTE_IMAGE_RE.search(url)
+                if size is None:
+                    continue
+                w, h = int(size.group(1)), int(size.group(2))
+                if w == h:
+                    # Square artwork is an icon, not a screenshot.
+                    continue
+
+                # Dedupe by image identity (path before the /WxH segment).
+                group_key = url[: size.start()]
+                area = w * h
+                current = best.get(group_key)
+                if current is None or (type_priority, area) > (
+                    current[0],
+                    current[1],
+                ):
+                    best[group_key] = (
+                        type_priority,
+                        area,
+                        {"url": url, "w": w, "h": h, "orient": orient},
+                    )
+
+        return [v[2] for v in best.values()]
+
+    @staticmethod
+    def _is_iphone_aspect(picture: Dict[str, Any]) -> bool:
+        """iPhone screenshots are tall portrait (h/w >~ 1.7)."""
+        w: int = int(picture["w"])
+        h: int = int(picture["h"])
+        return picture["orient"] == "portrait" and w > 0 and (h / w) > 1.6
+
+    @staticmethod
+    def _is_ipad_aspect(picture: Dict[str, Any]) -> bool:
+        """iPad screenshots are ~3:4 portrait or ~4:3 landscape."""
+        w: int = int(picture["w"])
+        h: int = int(picture["h"])
+        if w <= 0 or h <= 0:
+            return False
+        ratio_p = h / w
+        ratio_l = w / h
+        return (1.2 < ratio_p < 1.5) or (1.2 < ratio_l < 1.5)
+
     def _extract_screenshots(self, soup: BeautifulSoup) -> List[HttpUrl]:
         """Extract iPhone screenshot URLs."""
         screenshots: List[HttpUrl] = []
@@ -849,6 +945,13 @@ class WebScraperExtractor(BaseExtractor):
 
                         break  # Found the screenshots section, no need to continue
 
+        # Method 3: Svelte structure (current) — aspect-based detection
+        if not screenshots:
+            pictures = self._extract_svelte_screenshot_pictures(soup)
+            screenshots = [
+                HttpUrl(p["url"]) for p in pictures if self._is_iphone_aspect(p)
+            ]
+
         return screenshots
 
     def _extract_ipad_screenshots(self, soup: BeautifulSoup) -> List[HttpUrl]:
@@ -915,6 +1018,13 @@ class WebScraperExtractor(BaseExtractor):
                             screenshots.append(HttpUrl(best_url))
 
                     break  # Found the iPad screenshots section, no need to continue
+
+        # Svelte structure (current) — aspect-based detection
+        if not screenshots:
+            pictures = self._extract_svelte_screenshot_pictures(soup)
+            screenshots = [
+                HttpUrl(p["url"]) for p in pictures if self._is_ipad_aspect(p)
+            ]
 
         return screenshots
 

@@ -332,6 +332,131 @@ class TestWebScraperExtractor:
         assert web_extractor._extract_developer_website_url(soup) is None
         assert web_extractor._extract_app_support_url(soup) is None
 
+    # --- Svelte screenshot extraction --------------------------------------
+
+    @staticmethod
+    def _svelte_picture(
+        orient: str, w: int, h: int, base_path: str = "/image/x.png"
+    ) -> str:
+        """Build a Svelte-style <picture> with an srcset URL of the given size.
+
+        The Apple Svelte page wraps screenshots/icons in
+        ``<div class="artwork-component artwork-component--orientation-XXX">``
+        and emits one or more ``<source srcset="…WxHbb.webp …">`` entries.
+        """
+        url = f"https://is1-ssl.mzstatic.com{base_path}/{w}x{h}bb.webp"
+        return (
+            f'<div class="artwork-component artwork-component--aspect-ratio '
+            f'artwork-component--orientation-{orient} svelte-1fla0gl">'
+            f'<picture class="svelte-1fla0gl">'
+            f'<source type="image/webp" srcset="{url}"></source>'
+            f"</picture></div>"
+        )
+
+    def test_extract_screenshots_svelte_iphone(self, web_extractor):
+        """iPhone portrait screenshots are read from Svelte <source srcset>.
+
+        Apple migrated the product page to a Svelte frontend; the screenshots
+        live in <picture><source srcset="…600x1300bb.webp"> inside an ancestor
+        ``div.artwork-component--orientation-portrait``. The svelte-XXXXX
+        class hashes are volatile, so the stable ``orientation-portrait`` token
+        and the resolution pattern in the URL are matched instead.
+        """
+        from bs4 import BeautifulSoup
+
+        html = (
+            self._svelte_picture("portrait", 600, 1300, "/image/a.png/")
+            + self._svelte_picture("portrait", 600, 1300, "/image/b.png/")
+            # Icon (square) — must be filtered out
+            + self._svelte_picture("square", 96, 96, "/image/icon.png/")
+        )
+        soup = BeautifulSoup(html, "lxml")
+        shots = web_extractor._extract_screenshots(soup)
+        assert len(shots) == 2
+        for url in shots:
+            assert "mzstatic.com" in str(url)
+            assert "600x1300" in str(url)
+
+    def test_extract_ipad_screenshots_svelte_portrait_and_landscape(
+        self, web_extractor
+    ):
+        """iPad screenshots are matched at both portrait (~3:4) and landscape (~4:3) aspect."""
+        from bs4 import BeautifulSoup
+
+        html = (
+            # iPad portrait 3:4
+            self._svelte_picture("portrait", 1286, 1714, "/image/p1.png/")
+            + self._svelte_picture("portrait", 1286, 1714, "/image/p2.png/")
+            # iPad landscape 4:3
+            + self._svelte_picture("landscape", 1286, 964, "/image/l1.png/")
+            # iPhone-aspect picture should NOT be classified as iPad
+            + self._svelte_picture("portrait", 600, 1300, "/image/iphone.png/")
+            # Icon — filtered out
+            + self._svelte_picture("square", 96, 96, "/image/icon.png/")
+        )
+        soup = BeautifulSoup(html, "lxml")
+        shots = web_extractor._extract_ipad_screenshots(soup)
+        assert len(shots) == 3
+        urls = [str(u) for u in shots]
+        assert any("1286x1714" in u for u in urls)
+        assert any("1286x964" in u for u in urls)
+        # The iPhone-aspect one must be excluded from iPad results
+        assert not any("600x1300" in u for u in urls)
+
+    def test_extract_screenshots_svelte_dedup_keeps_highest_resolution(
+        self, web_extractor
+    ):
+        """When a <source srcset> lists multiple sizes for one image, return the largest."""
+        from bs4 import BeautifulSoup
+
+        # One picture with both 1x and 2x variants in the srcset; same base path.
+        base = "/image/x.png/"
+        html = (
+            '<div class="artwork-component artwork-component--orientation-portrait">'
+            "<picture>"
+            f'<source type="image/webp" srcset='
+            f'"https://is1-ssl.mzstatic.com{base}600x1300bb.webp 1x, '
+            f'https://is1-ssl.mzstatic.com{base}1200x2600bb.webp 2x">'
+            "</source></picture></div>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        shots = web_extractor._extract_screenshots(soup)
+        assert len(shots) == 1
+        assert "1200x2600" in str(shots[0])
+
+    def test_extract_screenshots_svelte_empty_when_only_icons(self, web_extractor):
+        """A page with only square (icon) artworks yields zero screenshots."""
+        from bs4 import BeautifulSoup
+
+        html = self._svelte_picture(
+            "square", 96, 96, "/image/a.png/"
+        ) + self._svelte_picture("square", 512, 512, "/image/b.png/")
+        soup = BeautifulSoup(html, "lxml")
+        assert web_extractor._extract_screenshots(soup) == []
+        assert web_extractor._extract_ipad_screenshots(soup) == []
+
+    def test_extract_screenshots_legacy_section_still_works(self, web_extractor):
+        """The legacy ``section--screenshots`` markup is still supported."""
+        from bs4 import BeautifulSoup
+
+        html = (
+            '<section class="section--screenshots">'
+            '<img src="https://example.com/shot1.png">'
+            '<img src="https://example.com/shot2.png">'
+            "</section>"
+        )
+        soup = BeautifulSoup(html, "lxml")
+        shots = web_extractor._extract_screenshots(soup)
+        assert len(shots) == 2
+
+    def test_extract_screenshots_absent(self, web_extractor):
+        """Pages with no screenshot pictures return an empty list."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup("<div>nothing here</div>", "lxml")
+        assert web_extractor._extract_screenshots(soup) == []
+        assert web_extractor._extract_ipad_screenshots(soup) == []
+
 
 class TestCombinedExtractor:
     """Test CombinedExtractor class - only working tests."""
