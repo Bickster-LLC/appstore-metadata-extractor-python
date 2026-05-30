@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-05-29
+
+### Fixed
+- **Web screenshot scraping for the Svelte App Store page**: the old
+  `h2.section__headline` + `picture.we-artwork--screenshot` selectors were
+  broken by Apple's Svelte page migration and returned nothing, so
+  `metadata.screenshots` and `metadata.ipad_screenshots` were only populated
+  when the iTunes API happened to carry screenshots for that app.
+  `_extract_screenshots` and `_extract_ipad_screenshots` now fall back to a
+  signal-based path that scans `<source srcset>` URLs with a
+  `/WxH.{png,webp,jpg}` resolution segment, requires an ancestor
+  `div.artwork-component--orientation-{portrait,landscape}` (which excludes
+  the `orientation-square` icons), dedups by image path-prefix keeping the
+  highest-resolution variant (PNG preferred over WebP), and splits iPhone vs
+  iPad by aspect ratio. The legacy paths still run first.
+
+  Live-verified recovery (web side; the existing iTunes-vs-web merge keeps
+  whichever set is larger per device):
+
+  | App        | iPhone before → after | iPad before → after |
+  |------------|----------------------:|--------------------:|
+  | Bible      | 0 → 6                 | 9 (iTunes wins)     |
+  | ChatGPT    | 0 → 6                 | 0 → 5               |
+  | WhatsApp   | 5 (iTunes wins)       | 0 → 4               |
+  | Procreate  | 0 (iPad-only app)     | 10 (iTunes wins)    |
+
 ## [0.2.4] - 2026-05-28
 
 ### Documentation
