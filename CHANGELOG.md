@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-05-31
+
+### Fixed
+- **Chart rankings for a specific genre now actually work.** The
+  `genre_id` parameter on `AppStoreRankingFetcher.fetch_chart()` and
+  `find_app_rank()` had always been exposed but the underlying Marketing
+  Tools endpoint (`rss.marketingtools.apple.com`) silently returns 404
+  whenever a genre id is supplied, so any caller that passed `genre_id`
+  hit a `NetworkError`.
+
+### Changed
+- `AppStoreRankingFetcher` now calls the legacy iTunes RSS endpoint at
+  `https://itunes.apple.com/<cc>/rss/<chart>/limit=<N>[/genre=<id>]/json`,
+  which is currently the only Apple chart endpoint that accepts both
+  overall and category-specific queries. Chart kinds are mapped to the
+  legacy path segments: `top-free` → `topfreeapplications`,
+  `top-paid` → `toppaidapplications`, `top-grossing` →
+  `topgrossingapplications`.
+- The public API (`ChartSnapshot`, `RankingEntry`, `fetch_chart`,
+  `find_app_rank`) is unchanged. Minor field-shape consequences from the
+  endpoint swap:
+  - `genre_ids` now contains the single primary genre id Apple lists for
+    the entry (the legacy feed does not expose secondary genres);
+  - `artwork_url` now points to the highest resolution variant in the
+    feed's `im:image` list (≤ 100×100), instead of Marketing Tools'
+    `artworkUrl100`.
+
 ## [0.3.0] - 2026-05-31
 
 ### Added
