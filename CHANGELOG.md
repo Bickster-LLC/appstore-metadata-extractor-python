@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-31
+
+### Added
+- **Map the high-value iTunes Lookup fields** that were already in the
+  response but went unused, populating the matching model fields on
+  `ExtendedAppMetadata` (and, transitively, `AppMetadataCombined`):
+
+  | iTunes Lookup key                  | Model field                              |
+  |------------------------------------|------------------------------------------|
+  | `genres`                           | `categories: List[str]`                  |
+  | `genreIds`                         | `category_ids: List[int]` (string-coerced; non-numeric entries skipped) |
+  | `features`                         | `features: List[str]`                    |
+  | `supportedDevices`                 | `supported_devices: List[str]` (NEW)     |
+  | `languageCodesISO2A`               | `language_codes: List[str]`              |
+  | `isGameCenterEnabled`              | `is_game_center_enabled: bool`           |
+  | `isVppDeviceBasedLicensingEnabled` | `is_vpp_device_based_licensing_enabled: bool` (NEW) |
+  | `advisories`                       | `content_advisories: List[str]` (NEW)    |
+  | `artworkUrl60` / `artworkUrl100` / `artworkUrl512` | `icon_urls: Dict[str, HttpUrl]` (NEW; the single `icon_url` continues to mirror `artworkUrl512`) |
+  | `sellerUrl`                        | `developer_website_url` (only when web scraping doesn't supply one — `_merge_metadata` still lets web override) |
+
+  These changes work in both iTunes-only mode (`skip_web_scraping=True`) and
+  combined mode. In particular, iTunes-only callers now get
+  `language_codes` populated without needing web scraping.
+
+- New fields on `ExtendedAppMetadata` to match `AppMetadataCombined`:
+  `supported_devices: List[str]`, `is_vpp_device_based_licensing_enabled: bool`,
+  `content_advisories: List[str]`, `icon_urls: Dict[str, HttpUrl]`. All default
+  to empty / `False`, so existing callers are unaffected.
+
+### Changed
+- The integration test `test_chatgpt_language_extraction` previously asserted
+  that iTunes-only mode returned zero `language_codes`. That premise no longer
+  holds; the test now asserts that iTunes-only mode populates
+  `language_codes` while human-readable `languages` still requires web
+  scraping.
+
+### Documentation
+- README "Extracted Fields": dropped the _(reserved — not yet populated)_
+  annotations from fields now populated by iTunes
+  (`categories`, `category_ids`, `features`, `supported_devices`,
+  `content_advisories`, `icon_urls`, `is_game_center_enabled`,
+  `is_vpp_device_based_licensing_enabled`). The "Languages" section header no
+  longer claims web scraping is required for codes.
+
 ## [0.2.5] - 2026-05-29
 
 ### Fixed
