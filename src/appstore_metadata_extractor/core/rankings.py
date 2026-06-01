@@ -1,12 +1,20 @@
-"""Apple Marketing Tools chart RSS client.
+"""Apple iTunes chart RSS client.
 
 Pulls current chart positions from:
 
-    https://rss.marketingtools.apple.com/api/v2/<cc>/apps/<chart>/<limit>/apps.json
-    https://rss.marketingtools.apple.com/api/v2/<cc>/apps/<chart>/<limit>/<genre_id>.json
+    https://itunes.apple.com/<cc>/rss/<chart>/limit=<N>/json
+    https://itunes.apple.com/<cc>/rss/<chart>/limit=<N>/genre=<id>/json
 
-The legacy hostname ``rss.applemarketingtools.com`` still resolves but
-issues a 301 redirect; this client uses the canonical hostname.
+This used to call the newer ``rss.marketingtools.apple.com`` endpoint, but
+that endpoint silently 404s when a genre is supplied — so genre-filtered
+charts could not actually be fetched. The legacy ``itunes.apple.com`` RSS is
+the only Apple endpoint that still supports both overall and genre-filtered
+charts at the time of writing.
+
+Chart kinds are mapped to the legacy path segments:
+``top-free`` → ``topfreeapplications``,
+``top-paid`` → ``toppaidapplications``,
+``top-grossing`` → ``topgrossingapplications``.
 
 Returns a *snapshot* — historical tracking is the consumer's responsibility.
 """
@@ -53,10 +61,17 @@ class ChartSnapshot(BaseModel):
 
 
 class AppStoreRankingFetcher:
-    """Async client for the Apple Marketing Tools chart RSS feed."""
+    """Async client for the iTunes chart RSS feed."""
 
-    BASE_URL = "https://rss.marketingtools.apple.com/api/v2"
+    BASE_URL = "https://itunes.apple.com"
     DEFAULT_CACHE_TTL = 60 * 60  # 1 hour
+
+    # Map the public chart kind to the legacy iTunes RSS path segment.
+    _CHART_PATH_SEGMENT: Dict[str, str] = {
+        "top-free": "topfreeapplications",
+        "top-paid": "toppaidapplications",
+        "top-grossing": "topgrossingapplications",
+    }
 
     def __init__(
         self,
@@ -106,8 +121,12 @@ class AppStoreRankingFetcher:
         if cached is not None:
             return ChartSnapshot.model_validate(cached)
 
-        suffix = f"{genre_id}.json" if genre_id else "apps.json"
-        url = f"{self.BASE_URL}/{country}/apps/{chart}/{clamped_limit}/{suffix}"
+        chart_segment = self._CHART_PATH_SEGMENT[chart]
+        path = f"/{country}/rss/{chart_segment}/limit={clamped_limit}"
+        if genre_id:
+            path += f"/genre={genre_id}"
+        path += "/json"
+        url = f"{self.BASE_URL}{path}"
 
         self.rate_limiter.consume(_RATE_LIMIT_SERVICE)
 
@@ -156,35 +175,70 @@ class AppStoreRankingFetcher:
         genre_id: Optional[str],
         payload: Dict[str, Any],
     ) -> ChartSnapshot:
+        """Parse the legacy iTunes RSS chart payload.
+
+        Each entry sits under ``feed.entry`` and uses the typical Apple RSS
+        namespaces (``im:name``, ``im:artist``, ``im:image``, ``category``).
+        Rank is implicit in the entry order — the feed itself doesn't carry
+        an explicit rank field — so we enumerate.
+        """
         feed = payload.get("feed", {}) if isinstance(payload, dict) else {}
-        raw_results = feed.get("results") or []
+        raw_entries = feed.get("entry") or []
+        # Apple occasionally returns a single entry as a dict, not a list.
+        if isinstance(raw_entries, dict):
+            raw_entries = [raw_entries]
+        if not isinstance(raw_entries, list):
+            raw_entries = []
+
+        def _label(node: Any) -> Optional[str]:
+            if isinstance(node, dict):
+                value = node.get("label")
+                return str(value) if value is not None else None
+            return None
 
         entries: List[RankingEntry] = []
-        for rank, item in enumerate(raw_results, start=1):
+        for rank, item in enumerate(raw_entries, start=1):
             if not isinstance(item, dict):
                 continue
-            raw_id = item.get("id")
-            if not raw_id:
-                continue
 
-            # Genres can be missing, [], or [{genreId, name}].
-            genres_raw = item.get("genres") or []
+            id_node = item.get("id") or {}
+            id_attrs = id_node.get("attributes") if isinstance(id_node, dict) else None
+            app_id = id_attrs.get("im:id") if isinstance(id_attrs, dict) else None
+            if not app_id:
+                continue
+            apps_url = _label(id_node) if isinstance(id_node, dict) else None
+
+            name = _label(item.get("im:name")) or ""
+            developer_name = _label(item.get("im:artist")) or ""
+
+            # The category node holds the primary genre id under
+            # ``attributes['im:id']``. The legacy feed only lists this single
+            # primary genre — secondary genres are not provided.
+            category = item.get("category") or {}
+            cat_attrs = (
+                category.get("attributes") if isinstance(category, dict) else None
+            )
             genre_ids: List[str] = []
-            for g in genres_raw:
-                if isinstance(g, dict):
-                    g_id = g.get("genreId") or g.get("id")
-                    if g_id is not None:
-                        genre_ids.append(str(g_id))
+            if isinstance(cat_attrs, dict):
+                primary = cat_attrs.get("im:id")
+                if primary is not None:
+                    genre_ids.append(str(primary))
+
+            # ``im:image`` is a list of icon URLs ordered low→high resolution.
+            artwork_url: Optional[str] = None
+            images = item.get("im:image")
+            if isinstance(images, list) and images:
+                artwork_url = _label(images[-1])
 
             entries.append(
                 RankingEntry(
                     rank=rank,
-                    app_id=str(raw_id),
-                    name=item.get("name", ""),
-                    developer_name=item.get("artistName", ""),
+                    app_id=str(app_id),
+                    name=name,
+                    developer_name=developer_name,
                     genre_ids=genre_ids,
-                    artwork_url=item.get("artworkUrl100"),
-                    url=item.get("url"),
+                    artwork_url=artwork_url,
+                    url=apps_url,
                 )
             )
 

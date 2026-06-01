@@ -57,8 +57,7 @@ class TestChartParsing:
         assert isinstance(snapshot, ChartSnapshot)
         assert snapshot.chart == "top-free"
         assert snapshot.country == "us"
-        # Fixture has 100 entries.
-        assert len(snapshot.entries) == 100
+        assert len(snapshot.entries) == len(chart_payload["feed"]["entry"])
 
     @pytest.mark.asyncio
     async def test_rank_is_one_indexed(self, fetcher, chart_payload):
@@ -75,17 +74,23 @@ class TestChartParsing:
             snapshot = await fetcher.fetch_chart("top-free", country="us")
 
         first = snapshot.entries[0]
-        raw_first = chart_payload["feed"]["results"][0]
-        assert first.app_id == str(raw_first["id"])
-        assert first.name == raw_first["name"]
-        assert first.developer_name == raw_first["artistName"]
-        assert first.artwork_url == raw_first.get("artworkUrl100")
+        raw_first = chart_payload["feed"]["entry"][0]
+        assert first.app_id == str(raw_first["id"]["attributes"]["im:id"])
+        assert first.name == raw_first["im:name"]["label"]
+        assert first.developer_name == raw_first["im:artist"]["label"]
+        # The legacy feed lists icon URLs low→high resolution; the parser
+        # keeps the largest variant.
+        assert first.artwork_url == raw_first["im:image"][-1]["label"]
+        # ``category.attributes['im:id']`` is the primary genre id.
+        assert first.genre_ids == [str(raw_first["category"]["attributes"]["im:id"])]
 
 
 class TestFindAppRank:
     @pytest.mark.asyncio
     async def test_find_present_app(self, fetcher, chart_payload):
-        first_app_id = str(chart_payload["feed"]["results"][0]["id"])
+        first_app_id = str(
+            chart_payload["feed"]["entry"][0]["id"]["attributes"]["im:id"]
+        )
         with _patch_session(fetcher, _mock_response(chart_payload)):
             rank = await fetcher.find_app_rank(first_app_id, "top-free")
         assert rank == 1
@@ -95,6 +100,41 @@ class TestFindAppRank:
         with _patch_session(fetcher, _mock_response(chart_payload)):
             rank = await fetcher.find_app_rank("0000000000", "top-free")
         assert rank is None
+
+
+class TestRequestUrl:
+    """Verify the URL built for the iTunes RSS endpoint, including genre filter.
+
+    The previous Marketing Tools endpoint silently 404'd when a genre id was
+    supplied; the legacy ``itunes.apple.com`` URL is the only path Apple still
+    accepts for category-specific charts. Capturing the constructed URL here
+    locks the path format so accidental refactors do not regress to a 404.
+    """
+
+    @pytest.mark.asyncio
+    async def test_url_without_genre(self, fetcher, chart_payload):
+        session = MagicMock()
+        session.get = MagicMock(return_value=_mock_response(chart_payload))
+        with patch.object(fetcher, "_get_session", AsyncMock(return_value=session)):
+            await fetcher.fetch_chart("top-free", country="us", limit=50)
+        called_url = session.get.call_args.args[0]
+        assert called_url == (
+            "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/json"
+        )
+
+    @pytest.mark.asyncio
+    async def test_url_with_genre(self, fetcher, chart_payload):
+        session = MagicMock()
+        session.get = MagicMock(return_value=_mock_response(chart_payload))
+        with patch.object(fetcher, "_get_session", AsyncMock(return_value=session)):
+            await fetcher.fetch_chart(
+                "top-paid", country="us", limit=20, genre_id="6005"
+            )
+        called_url = session.get.call_args.args[0]
+        assert called_url == (
+            "https://itunes.apple.com/us/rss/toppaidapplications"
+            "/limit=20/genre=6005/json"
+        )
 
 
 class TestCaching:
