@@ -258,6 +258,19 @@ class ExtendedAppMetadata(AppMetadata):
     is_game_center_enabled: bool = Field(
         default=False, description="Game Center support"
     )
+    is_vpp_device_based_licensing_enabled: bool = Field(
+        default=False, description="VPP device-based licensing support"
+    )
+    supported_devices: List[str] = Field(
+        default_factory=list, description="List of compatible device identifiers"
+    )
+    content_advisories: List[str] = Field(
+        default_factory=list, description="List of content advisories / warnings"
+    )
+    icon_urls: Dict[str, HttpUrl] = Field(
+        default_factory=dict,
+        description="Map of icon size (e.g. '60', '100', '512') to URL",
+    )
 
     # URLs
     support_url: Optional[HttpUrl] = Field(None, description="Support website")

@@ -217,6 +217,29 @@ class ITunesAPIExtractor(BaseExtractor):
 
     def _parse_itunes_data(self, data: Dict[str, Any], url: str) -> ExtendedAppMetadata:
         """Parse iTunes API response into ExtendedAppMetadata."""
+        # Coerce iTunes' string genreIds into ints for category_ids: List[int].
+        # Non-numeric entries are skipped defensively.
+        category_ids: List[int] = []
+        for raw_id in data.get("genreIds") or []:
+            try:
+                category_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+
+        # Build icon_urls from whichever artwork sizes the lookup provided.
+        icon_urls: Dict[str, HttpUrl] = {}
+        for size_key, api_key in (
+            ("60", "artworkUrl60"),
+            ("100", "artworkUrl100"),
+            ("512", "artworkUrl512"),
+        ):
+            icon_url_value = data.get(api_key)
+            if icon_url_value:
+                icon_urls[size_key] = HttpUrl(str(icon_url_value))
+
+        seller_url = data.get("sellerUrl")
+        developer_website_url = HttpUrl(str(seller_url)) if seller_url else None
+
         # Use ExtendedAppMetadata to include iPad screenshots
         return ExtendedAppMetadata(
             app_id=str(data.get("trackId", "")),
@@ -228,6 +251,9 @@ class ITunesAPIExtractor(BaseExtractor):
             developer_id=str(data.get("artistId", "")),
             category=data.get("primaryGenreName", ""),
             category_id=data.get("primaryGenreId"),
+            # Full lists alongside the primary_* values
+            categories=data.get("genres") or [],
+            category_ids=category_ids,
             price=data.get("price", 0.0),
             formatted_price=data.get("formattedPrice", "Free"),
             currency=data.get("currency", "USD"),
@@ -240,14 +266,18 @@ class ITunesAPIExtractor(BaseExtractor):
             file_size_bytes=data.get("fileSizeBytes"),
             minimum_os_version=data.get("minimumOsVersion"),
             content_rating=data.get("contentAdvisoryRating", "4+"),
+            content_advisories=data.get("advisories") or [],
             average_rating=data.get("averageUserRating"),
             rating_count=data.get("userRatingCount"),
             icon_url=HttpUrl(data.get("artworkUrl512", data.get("artworkUrl100", ""))),
+            icon_urls=icon_urls,
             screenshots=data.get("screenshotUrls", []),
             ipad_screenshots=data.get("ipadScreenshotUrls", []),  # Add iPad screenshots
             app_support_url=None,  # Not available from iTunes API
             privacy_policy_url=None,  # Not available from iTunes API
-            developer_website_url=None,  # Not available from iTunes API
+            # The iTunes ``sellerUrl`` is the developer's site. The combined
+            # merge still lets web-scraping override this if it finds its own.
+            developer_website_url=developer_website_url,
             data_source=DataSource.ITUNES_API,
             extracted_at=datetime.now(UTC),
             # ExtendedAppMetadata specific fields
@@ -260,6 +290,14 @@ class ITunesAPIExtractor(BaseExtractor):
                 "averageUserRatingForCurrentVersion"
             ),
             rating_count_current_version=data.get("userRatingCountForCurrentVersion"),
+            # New iTunes-supplied capability flags + device list + language codes
+            features=data.get("features") or [],
+            supported_devices=data.get("supportedDevices") or [],
+            language_codes=data.get("languageCodesISO2A") or [],
+            is_game_center_enabled=bool(data.get("isGameCenterEnabled", False)),
+            is_vpp_device_based_licensing_enabled=bool(
+                data.get("isVppDeviceBasedLicensingEnabled", False)
+            ),
             support_url=None,  # Not available from iTunes API
             marketing_url=None,  # Not available from iTunes API
             raw_data=None,  # Don't store raw data to save memory

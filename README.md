@@ -374,12 +374,10 @@ The extractor provides comprehensive app metadata including:
 > **Note:** Some fields below are defined on the model but **not yet populated**
 > by the current extractors — they return their default (`None`, `[]`, or
 > `False`) and are marked _(reserved — not yet populated)_. Reserved fields:
-> `categories`, `category_ids`, `version_history`, `content_advisories`,
-> `rating_distribution`, `reviews`, `icon_urls`, `supported_devices`,
-> `features`, `privacy`, `developer_apps`, `similar_apps`, `rankings`,
-> `support_url`, `marketing_url`, `is_game_center_enabled`,
-> `is_vpp_device_based_licensing_enabled`. For reviews and chart rankings, use
-> the dedicated `AppStoreReviewExtractor` and `AppStoreRankingFetcher` instead.
+> `version_history`, `rating_distribution`, `reviews`, `privacy`,
+> `developer_apps`, `similar_apps`, `rankings`, `support_url`,
+> `marketing_url`. For reviews and chart rankings, use the dedicated
+> `AppStoreReviewExtractor` and `AppStoreRankingFetcher` instead.
 
 ### Basic Information
 - **app_id** - Apple App Store ID
@@ -394,8 +392,8 @@ The extractor provides comprehensive app metadata including:
 ### Categories
 - **category** / **primary_category** - Primary category name
 - **category_id** / **primary_category_id** - Primary category ID
-- **categories** - List of all categories _(reserved — not yet populated; use `category`)_
-- **category_ids** - List of all category IDs _(reserved — not yet populated; use `category_id`)_
+- **categories** - List of all categories (from iTunes `genres`)
+- **category_ids** - List of all category IDs (from iTunes `genreIds`)
 
 ### Pricing & Purchases
 - **price** - App price (numeric value)
@@ -420,11 +418,11 @@ The extractor provides comprehensive app metadata including:
 ### Content & Description
 - **description** - Full app description
 - **content_rating** - Age rating (e.g., "4+", "12+")
-- **content_advisories** - List of content warnings _(reserved — not yet populated)_
+- **content_advisories** - List of content warnings (from iTunes `advisories`)
 
-### Languages (web scraping required)
-- **languages** - Human-readable language names (e.g., "English", "Spanish")
-- **language_codes** - ISO language codes (e.g., "EN", "ES")
+### Languages
+- **languages** - Human-readable language names (e.g., "English", "Spanish") _(web scraping required)_
+- **language_codes** - ISO language codes (e.g., "EN", "ES") (from iTunes `languageCodesISO2A`; web scraping provides them too in combined mode)
 
 ### Ratings & Reviews
 - **average_rating** - Average user rating (0-5)
@@ -436,7 +434,7 @@ The extractor provides comprehensive app metadata including:
 
 ### Media Assets
 - **icon_url** - App icon URL (512x512)
-- **icon_urls** - Dictionary of multiple icon sizes _(reserved — not yet populated; use `icon_url`)_
+- **icon_urls** - Dict of icon size (`"60"`, `"100"`, `"512"`) to URL (from iTunes `artworkUrl60/100/512`)
 - **screenshots** - List of iPhone screenshot URLs
 - **ipad_screenshots** - List of iPad screenshot URLs (NEW in v0.1.10 - from iTunes API and web scraping)
 
@@ -451,12 +449,12 @@ The extractor provides comprehensive app metadata including:
 - **file_size_bytes** - Size in bytes
 - **file_size_formatted** - Human-readable size (e.g., "245.8 MB")
 - **minimum_os_version** - Minimum iOS version required
-- **supported_devices** - List of compatible devices _(reserved — not yet populated)_
+- **supported_devices** - List of compatible device identifiers (from iTunes `supportedDevices`)
 
-### Features & Capabilities _(reserved — not yet populated)_
-- **features** - List of app features/capabilities
-- **is_game_center_enabled** - Game Center support
-- **is_vpp_device_based_licensing_enabled** - VPP device licensing
+### Features & Capabilities
+- **features** - List of app features/capabilities (from iTunes `features`)
+- **is_game_center_enabled** - Game Center support (from iTunes `isGameCenterEnabled`)
+- **is_vpp_device_based_licensing_enabled** - VPP device licensing (from iTunes `isVppDeviceBasedLicensingEnabled`)
 
 ### Privacy Information _(reserved — not yet populated)_
 - **privacy** - Detailed privacy information including:

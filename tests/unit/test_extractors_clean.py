@@ -178,6 +178,106 @@ class TestITunesAPIExtractor:
             assert result.from_cache is True
             assert result.metadata.name == "Cached App"
 
+    @staticmethod
+    def _minimal_itunes_record() -> dict:
+        """Return a minimal valid iTunes Lookup response record.
+
+        Includes only the fields _parse_itunes_data treated as required prior
+        to v0.3.0; the new mappings layer on top.
+        """
+        return {
+            "trackId": 1,
+            "trackName": "Test App",
+            "artistName": "Test Dev",
+            "artistId": 2,
+            "primaryGenreName": "Games",
+            "primaryGenreId": 6014,
+            "currentVersionReleaseDate": "2026-01-01T00:00:00Z",
+            "version": "1.0.0",
+            "artworkUrl512": "https://example.com/icon-512.png",
+        }
+
+    def test_parse_itunes_data_maps_new_fields(self, itunes_extractor):
+        """The new high-value iTunes fields are mapped into ExtendedAppMetadata.
+
+        Apple's lookup response carries genres, genreIds, features,
+        supportedDevices, languageCodesISO2A, isGameCenterEnabled,
+        isVppDeviceBasedLicensingEnabled, advisories, artworkUrl60/100,
+        and sellerUrl — none of which were consumed before. genreIds is a
+        ``list[str]`` even though primaryGenreId is an ``int``, so values must
+        be coerced when populating ``category_ids: List[int]``.
+        """
+        record = self._minimal_itunes_record() | {
+            "genres": ["Games", "Strategy"],
+            "genreIds": ["6014", "7015"],
+            "features": ["iosUniversal"],
+            "supportedDevices": ["iPhone10-iPhone10", "iPadAir-iPadAir"],
+            "languageCodesISO2A": ["EN", "ES", "FR"],
+            "isGameCenterEnabled": True,
+            "isVppDeviceBasedLicensingEnabled": True,
+            "advisories": ["Mild Violence", "Infrequent/Mild Mature Themes"],
+            "artworkUrl60": "https://example.com/icon-60.png",
+            "artworkUrl100": "https://example.com/icon-100.png",
+            "sellerUrl": "https://example.com/",
+        }
+        m = itunes_extractor._parse_itunes_data(
+            record, "https://apps.apple.com/us/app/test/id1"
+        )
+
+        assert m.categories == ["Games", "Strategy"]
+        assert m.category_ids == [6014, 7015]
+        assert m.features == ["iosUniversal"]
+        assert m.supported_devices == ["iPhone10-iPhone10", "iPadAir-iPadAir"]
+        assert m.language_codes == ["EN", "ES", "FR"]
+        assert m.is_game_center_enabled is True
+        assert m.is_vpp_device_based_licensing_enabled is True
+        assert m.content_advisories == [
+            "Mild Violence",
+            "Infrequent/Mild Mature Themes",
+        ]
+        assert str(m.icon_urls["60"]) == "https://example.com/icon-60.png"
+        assert str(m.icon_urls["100"]) == "https://example.com/icon-100.png"
+        assert str(m.icon_urls["512"]) == "https://example.com/icon-512.png"
+        assert str(m.developer_website_url) == "https://example.com/"
+
+    def test_parse_itunes_data_defaults_when_new_fields_missing(self, itunes_extractor):
+        """Records missing the new keys still parse, with safe defaults.
+
+        Older cached responses and apps that omit certain optional fields
+        (e.g. sellerUrl, advisories) must not break extraction.
+        """
+        m = itunes_extractor._parse_itunes_data(
+            self._minimal_itunes_record(),
+            "https://apps.apple.com/us/app/test/id1",
+        )
+        assert m.categories == []
+        assert m.category_ids == []
+        assert m.features == []
+        assert m.supported_devices == []
+        assert m.language_codes == []
+        assert m.is_game_center_enabled is False
+        assert m.is_vpp_device_based_licensing_enabled is False
+        assert m.content_advisories == []
+        # icon_urls always carries the 512 entry because artworkUrl512 is in the
+        # minimal record; the 60/100 keys are absent here.
+        assert "512" in m.icon_urls
+        assert "60" not in m.icon_urls
+        assert m.developer_website_url is None
+
+    def test_parse_itunes_data_skips_non_numeric_genre_ids(self, itunes_extractor):
+        """Non-numeric entries in genreIds are skipped, not coerced to error.
+
+        Apple has historically returned a mix of numeric strings; defensive
+        parsing avoids a ValueError on a stray non-numeric value.
+        """
+        record = self._minimal_itunes_record() | {
+            "genreIds": ["6014", "not-a-number", "7015"],
+        }
+        m = itunes_extractor._parse_itunes_data(
+            record, "https://apps.apple.com/us/app/test/id1"
+        )
+        assert m.category_ids == [6014, 7015]
+
 
 class TestWebScraperExtractor:
     """Test WebScraperExtractor class - only working tests."""

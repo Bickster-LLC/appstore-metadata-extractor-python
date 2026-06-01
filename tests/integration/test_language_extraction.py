@@ -31,18 +31,22 @@ async def test_chatgpt_language_extraction():
         metadata = result.app_metadata
         print(f"✓ App: {metadata.name}")
         print(f"✓ Bundle ID: {metadata.bundle_id}")
-        print(f"✗ Languages from iTunes API: {len(metadata.languages)} (expected: 0)")
+        # Since v0.3.0 the iTunes Lookup API's ``languageCodesISO2A`` is mapped
+        # into ``language_codes``. Human-readable ``languages`` still require
+        # web scraping because the Lookup API only carries ISO codes.
         print(
-            f"✗ Language codes from iTunes API: {len(metadata.language_codes)} (expected: 0)"
+            f"✗ Languages (names) from iTunes API: {len(metadata.languages)} (expected: 0)"
+        )
+        print(
+            f"✓ Language codes from iTunes API: {len(metadata.language_codes)} (expected: > 0)"
         )
 
-        # iTunes API should not provide language data
         assert (
             len(metadata.languages) == 0
-        ), "iTunes API should not provide language data"
+        ), "iTunes API does not provide human-readable language names"
         assert (
-            len(metadata.language_codes) == 0
-        ), "iTunes API should not provide language codes"
+            len(metadata.language_codes) > 1
+        ), "iTunes API should provide language codes (languageCodesISO2A)"
     else:
         pytest.fail(f"iTunes API extraction failed: {result.error}")
 
