@@ -147,5 +147,8 @@ cython_debug/
 # Project specific
 app_history/
 extraction_results.json
+combined_extractor_output.json
+wbs_report.json
+SESSION_HANDOFF.md
 *.db
 *.sqlite
