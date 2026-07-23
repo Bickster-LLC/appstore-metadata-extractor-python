@@ -28,32 +28,44 @@ Extract and monitor metadata from Apple App Store applications with ease.
 pip install apple-appstore-metadata-extractor
 ```
 
-## What's New in v0.2.2
+## What's New in v0.3.x
 
-Scraper fix for Apple's migration of the App Store product page to a Svelte
-frontend, which had silently broken several web-scraped fields:
+See [CHANGELOG.md](https://github.com/Bickster-LLC/appstore-metadata-extractor-python/blob/main/CHANGELOG.md)
+for the full history.
 
-- **In-app purchases** — `in_app_purchase_list` is populated again (item names
-  and prices), parsed from the new Svelte markup.
-- **Developer Website / Privacy Policy URLs** — `developer_website_url` and
-  `privacy_policy_url` are extracted again.
-- `app_support_url` is now typically `None` — Apple removed the explicit
-  "App Support" link from the web product page.
+- **Genre-filtered chart rankings actually work (v0.3.1)** — passing
+  `genre_id` to `AppStoreRankingFetcher.fetch_chart()` / `find_app_rank()`
+  used to fail with a `NetworkError` because Apple's Marketing Tools feed
+  404s on genre queries. Charts now use the legacy iTunes RSS endpoint,
+  which supports both overall and per-genre charts. The public API is
+  unchanged.
+- **More iTunes Lookup fields mapped (v0.3.0)** — `ExtendedAppMetadata`
+  (and `AppMetadataCombined`) now populate `categories`, `category_ids`,
+  `features`, `supported_devices`, `language_codes`,
+  `content_advisories`, `icon_urls` (60/100/512px variants),
+  `is_game_center_enabled`, and `is_vpp_device_based_licensing_enabled`
+  straight from the iTunes API — including in iTunes-only mode
+  (`skip_web_scraping=True`).
 
-> **Known issue:** web screenshot scraping no longer matches the Svelte markup
-> and returns nothing; in combined mode screenshots are sourced from the iTunes
-> API (which covers most apps). A dedicated fix is tracked for a future release.
+## What's New in v0.2.x
 
-## What's New in v0.2.0
-
-v0.2.0 closes three gaps that previously required a third-party service:
-
-- **Search** — `AppStoreSearcher` / `appstore-extractor search`
-- **Reviews** — `AppStoreReviewExtractor` / `appstore-extractor reviews`
-- **Rankings** — `AppStoreRankingFetcher` / `appstore-extractor chart` & `rank`
-- **`CompositeAppStoreClient`** — one client bundling all four extractors with
-  a shared rate limiter (default 20 req/min, the iTunes per-IP cap).
-- **Country parameter** on every existing extractor (defaults to `"us"`).
+- **Web screenshot scraping restored (v0.2.5)** — Apple's Svelte page
+  migration had broken screenshot scraping; a signal-based fallback now
+  recovers iPhone and iPad screenshots from the new markup, so combined
+  mode fills gaps the iTunes API leaves (e.g. ChatGPT went 0 → 6 iPhone /
+  0 → 5 iPad screenshots).
+- **Svelte scraper fixes (v0.2.2)** — `in_app_purchase_list`,
+  `developer_website_url`, and `privacy_policy_url` are extracted again
+  from the new Svelte markup. `app_support_url` is now typically `None` —
+  Apple removed the explicit "App Support" link from the product page.
+- **Search, Reviews, and Rankings (v0.2.0)** — closed three gaps that
+  previously required a third-party service: `AppStoreSearcher`
+  (`appstore-extractor search`), `AppStoreReviewExtractor`
+  (`appstore-extractor reviews`), `AppStoreRankingFetcher`
+  (`appstore-extractor chart` & `rank`), plus `CompositeAppStoreClient`
+  bundling all four extractors behind one shared rate limiter (default
+  20 req/min, the iTunes per-IP cap) and a `country` parameter on every
+  extractor (defaults to `"us"`).
 
 Recommended entry point:
 
