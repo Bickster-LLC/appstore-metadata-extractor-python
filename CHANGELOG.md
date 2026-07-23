@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-07-22
+
+### Documentation
+- PyPI description update: the README "What's New" section (which PyPI
+  renders as the project page) had not been updated since v0.2.2 and
+  still warned about the broken web screenshot scraping that v0.2.5
+  fixed. It now leads with the v0.3.x highlights (genre-filtered chart
+  rankings fix, expanded iTunes Lookup field mapping), condenses the
+  v0.2.x history, and links to this changelog. No code changes.
+
 ## [0.3.2] - 2026-07-22
 
 ### Changed
