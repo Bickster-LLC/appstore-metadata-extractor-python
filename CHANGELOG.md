@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-07-22
+
+### Changed
+- Repository housekeeping: the generated extractor outputs
+  `combined_extractor_output.json` and `wbs_report.json` are no longer
+  tracked in git and are now listed in `.gitignore`. They are example
+  run artifacts that changed on every extractor run; removing them
+  keeps diffs clean. No library code or behavior changed.
+
 ## [0.3.1] - 2026-05-31
 
 ### Fixed
